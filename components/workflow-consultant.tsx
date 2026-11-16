@@ -1,7 +1,9 @@
 "use client";
 
+import { Show, SignInButton, SignUpButton, useAuth } from "@clerk/nextjs";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { AuthControls } from "@/components/auth-controls";
 import {
   AgentReadinessCard,
   AutomationProposalCard,
@@ -37,6 +39,7 @@ type Phase = "idle" | "live" | "ended";
 type ShareRequest = { reason: string; whatToShow: string };
 
 export function WorkflowConsultant() {
+  const { isSignedIn, isLoaded } = useAuth();
   const sessionRef = useRef<RealtimeVoiceSession | null>(null);
   const previewRef = useRef<HTMLVideoElement | null>(null);
   const transcriptRef = useRef<TranscriptLine[]>([]);
@@ -136,6 +139,11 @@ export function WorkflowConsultant() {
   }, [screenSharing, bindPreview]);
 
   async function startSession() {
+    if (!isLoaded || !isSignedIn) {
+      setError("Sign in to start a call.");
+      return;
+    }
+
     setError(null);
     transcriptRef.current = [];
     workflowRef.current = createEmptyWorkflowModel();
@@ -307,16 +315,28 @@ export function WorkflowConsultant() {
             <AgentReadinessCard readiness={artifacts.readiness} />
           </div>
         ) : null}
-        <button
-          type="button"
-          onClick={() => {
-            setArtifacts(createEmptyInterviewArtifacts());
-            setPhase("idle");
-          }}
-          className="pr-pill !bg-[var(--pr-dark)] !px-7 !py-3.5 !text-[14px] !text-[var(--pr-cream)] hover:!bg-[#1d1d20]"
-        >
-          Start a new call
-        </button>
+        <Show when="signed-in">
+          <button
+            type="button"
+            onClick={() => {
+              setArtifacts(createEmptyInterviewArtifacts());
+              setPhase("idle");
+            }}
+            className="pr-pill cursor-pointer !bg-[var(--pr-dark)] !px-7 !py-3.5 !text-[14px] !text-[var(--pr-cream)] hover:!bg-[#1d1d20]"
+          >
+            Start a new call
+          </button>
+        </Show>
+        <Show when="signed-out">
+          <SignInButton mode="redirect" forceRedirectUrl="/">
+            <button
+              type="button"
+              className="pr-pill cursor-pointer !bg-[var(--pr-dark)] !px-7 !py-3.5 !text-[14px] !text-[var(--pr-cream)] hover:!bg-[#1d1d20]"
+            >
+              Sign in to continue
+            </button>
+          </SignInButton>
+        </Show>
       </div>
     );
   }
@@ -390,9 +410,7 @@ export function WorkflowConsultant() {
             <span className="pr-label !text-[11px] !tracking-[0.18em] text-[var(--pr-ink)]">
               Pacific
             </span>
-            <span className="pr-body text-[12.5px] text-[var(--pr-muted)]">
-              Forward Deployed Engineer
-            </span>
+            <AuthControls />
           </header>
 
           <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center px-6 pb-16 text-center">
@@ -410,17 +428,39 @@ export function WorkflowConsultant() {
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => void startSession()}
-              className="pr-pill mt-10 !bg-[var(--pr-dark)] !px-8 !py-3.5 !text-[14px] !tracking-[-0.01em] !text-[var(--pr-cream)] hover:!bg-[#1d1d20]"
-            >
-              Start call
-            </button>
+            <Show when="signed-in">
+              <button
+                type="button"
+                onClick={() => void startSession()}
+                className="pr-pill mt-10 cursor-pointer !bg-[var(--pr-dark)] !px-8 !py-3.5 !text-[14px] !tracking-[-0.01em] !text-[var(--pr-cream)] hover:!bg-[#1d1d20]"
+              >
+                Start call
+              </button>
+              <p className="pr-body mt-8 text-[12.5px] text-[var(--pr-muted)]">
+                Microphone required. Screen sharing only if it helps.
+              </p>
+            </Show>
 
-            <p className="pr-body mt-8 text-[12.5px] text-[var(--pr-muted)]">
-              Microphone required. Screen sharing only if it helps.
-            </p>
+            <Show when="signed-out">
+              <div className="mt-10 flex flex-col items-center gap-3">
+                <SignUpButton mode="redirect" forceRedirectUrl="/">
+                  <button
+                    type="button"
+                    className="pr-pill cursor-pointer !bg-[var(--pr-dark)] !px-8 !py-3.5 !text-[14px] !tracking-[-0.01em] !text-[var(--pr-cream)] hover:!bg-[#1d1d20]"
+                  >
+                    Create account to start
+                  </button>
+                </SignUpButton>
+                <SignInButton mode="redirect" forceRedirectUrl="/">
+                  <button
+                    type="button"
+                    className="pr-body cursor-pointer text-[13px] text-[var(--pr-muted)] transition-colors hover:text-[var(--pr-ink)]"
+                  >
+                    Already have an account? Sign in
+                  </button>
+                </SignInButton>
+              </div>
+            </Show>
 
             {error ? (
               <p

@@ -1,7 +1,10 @@
+import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Geist_Mono, Libre_Baskerville } from "next/font/google";
-import "./globals.css";
+import { ConvexClientProvider } from "@/components/convex-client-provider";
+import { StoreUser } from "@/components/store-user";
 import { cn } from "@/lib/utils";
+import "./globals.css";
 
 const baskerville = Libre_Baskerville({
   subsets: ["latin"],
@@ -35,7 +38,12 @@ export default function RootLayout({
       )}
     >
       <body className="flex min-h-full flex-col bg-white text-[#171719]">
-        {children}
+        <ClerkProvider>
+          <ConvexClientProvider>
+            <StoreUser />
+            {children}
+          </ConvexClientProvider>
+        </ClerkProvider>
       </body>
     </html>
   );

@@ -139,58 +139,183 @@
   --pr-dark: #111113;
   --pr-cream: #fafafa;
   --pr-line: rgba(23, 23, 25, 0.08);
+  --pr-line-soft: rgba(23, 23, 25, 0.055);
   background: var(--pr-bg);
   color: var(--pr-ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 .pacific-report .pr-display {
   font-family: var(--font-display), var(--font-sans), sans-serif;
   font-weight: 300;
-  letter-spacing: -0.04em;
-  line-height: 1.08;
+  letter-spacing: -0.035em;
+  line-height: 1.04;
+  text-wrap: balance;
 }
 
 .pacific-report .pr-body {
-  letter-spacing: -0.02em;
+  letter-spacing: -0.015em;
+}
+
+/* Small uppercase label used for eyebrows / field titles */
+.pacific-report .pr-label {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pr-muted);
+}
+
+.pacific-report .pr-label-light {
+  color: rgba(250, 250, 250, 0.5);
 }
 
 .pacific-report .pr-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.4rem;
   border-radius: 999px;
-  background: #fff;
+  background: var(--pr-cream);
   color: var(--pr-ink);
-  padding: 0.65rem 1.15rem;
-  font-size: 0.875rem;
-  letter-spacing: -0.02em;
-  transition: transform 160ms ease, background-color 160ms ease;
+  padding: 0.6rem 1.1rem;
+  font-size: 0.8125rem;
+  letter-spacing: -0.01em;
+  border: 1px solid transparent;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    border-color 180ms ease;
 }
 
 .pacific-report .pr-pill:hover {
-  background: #f0f0ee;
+  background: #fff;
 }
 
 .pacific-report .pr-pill-ghost {
   background: transparent;
   color: var(--pr-cream);
-  border: 1px solid rgba(250, 250, 250, 0.28);
+  border: 1px solid rgba(250, 250, 250, 0.22);
 }
 
 .pacific-report .pr-pill-ghost:hover {
+  background: rgba(250, 250, 250, 0.08);
+  border-color: rgba(250, 250, 250, 0.4);
+}
+
+/* Static chip (not clickable) */
+.pacific-report .pr-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 999px;
+  border: 1px solid var(--pr-line);
+  background: #fff;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.75rem;
+  letter-spacing: -0.01em;
+  color: var(--pr-soft);
+}
+
+.pacific-report .pr-chip-light {
+  border-color: rgba(250, 250, 250, 0.16);
   background: rgba(250, 250, 250, 0.06);
+  color: rgba(250, 250, 250, 0.82);
 }
 
 .pacific-report .pr-card {
   border: 1px solid var(--pr-line);
-  border-radius: 1.35rem;
+  border-radius: 1.5rem;
   background: #fff;
   overflow: hidden;
 }
 
+/* Subtle lift on interactive cards */
+.pacific-report .pr-card-hover {
+  transition:
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    transform 220ms ease;
+}
+
+.pacific-report .pr-card-hover:hover {
+  border-color: rgba(23, 23, 25, 0.16);
+  box-shadow: 0 24px 60px -40px rgba(17, 17, 19, 0.45);
+}
+
+.pacific-report .pr-inset {
+  border-radius: 1.1rem;
+  background: var(--pr-bg);
+  border: 1px solid var(--pr-line-soft);
+}
+
 .pacific-report .pr-dark-panel {
+  position: relative;
   background:
-    radial-gradient(120% 80% at 10% 0%, rgba(255, 255, 255, 0.08), transparent 55%),
-    linear-gradient(160deg, #17171a 0%, #0d0d0f 100%);
+    radial-gradient(
+      120% 90% at 8% -10%,
+      rgba(255, 255, 255, 0.1),
+      transparent 55%
+    ),
+    linear-gradient(158deg, #1a1a1d 0%, #121214 48%, #0b0b0d 100%);
   color: var(--pr-cream);
+}
+
+/* Fine grain so large black areas don't read as flat/cheap */
+.pacific-report .pr-grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.4;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.22'/%3E%3C/svg%3E");
+}
+
+/* Hairline divider that fades out, used under section headers */
+.pacific-report .pr-rule {
+  height: 1px;
+  border: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(23, 23, 25, 0.14),
+    rgba(23, 23, 25, 0.04) 55%,
+    transparent
+  );
+}
+
+.pacific-report .pr-rule-light {
+  background: linear-gradient(
+    90deg,
+    rgba(250, 250, 250, 0.22),
+    rgba(250, 250, 250, 0.06) 55%,
+    transparent
+  );
+}
+
+/* Arrow-marked list item */
+.pacific-report .pr-arrow-item {
+  position: relative;
+  padding-left: 1.1rem;
+}
+
+.pacific-report .pr-arrow-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.58em;
+  width: 0.4rem;
+  height: 1px;
+  background: rgba(23, 23, 25, 0.35);
+}
+
+.pacific-report .pr-arrow-item-light::before {
+  background: rgba(250, 250, 250, 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pacific-report * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }

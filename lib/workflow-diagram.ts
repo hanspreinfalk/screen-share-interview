@@ -21,8 +21,8 @@ export type DiagramFlowNodeData = {
   sourceLabel: string;
 };
 
-const NODE_WIDTH = 200;
-const NODE_HEIGHT = 88;
+const NODE_WIDTH = 196;
+const NODE_HEIGHT = 84;
 
 const KIND_LABELS: Record<WorkflowDiagramNode["kind"], string> = {
   start: "Start",
@@ -191,17 +191,22 @@ export function preferDiagram(
   return { nodes: [], edges: [] };
 }
 
-export function layoutDiagram(
-  diagram: { nodes: WorkflowDiagramNode[]; edges: WorkflowDiagramEdge[] },
-): { nodes: Node<DiagramFlowNodeData>[]; edges: Edge[] } {
+export function layoutDiagram(diagram: {
+  nodes: WorkflowDiagramNode[];
+  edges: WorkflowDiagramEdge[];
+}): {
+  nodes: Node<DiagramFlowNodeData>[];
+  edges: Edge[];
+  bounds: { width: number; height: number };
+} {
   const g = new dagreGraphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
   g.setGraph({
     rankdir: "LR",
-    nodesep: 56,
-    ranksep: 90,
-    marginx: 28,
-    marginy: 36,
+    nodesep: 44,
+    ranksep: 76,
+    marginx: 24,
+    marginy: 24,
   });
 
   for (const node of diagram.nodes) {
@@ -244,30 +249,42 @@ export function layoutDiagram(
       target: edge.target,
       label: label || undefined,
       type: "smoothstep",
+      pathOptions: { borderRadius: 18 },
       animated: isLoop,
       markerEnd: {
         type: MarkerType.ArrowClosed,
-        width: 18,
-        height: 18,
-        color: isLoop ? "oklch(0.52 0.08 40)" : "oklch(0.4 0.02 250)",
+        width: 14,
+        height: 14,
+        color: isLoop ? "#d08a4e" : "rgba(23,23,25,0.45)",
       },
       style: {
-        stroke: isLoop ? "oklch(0.58 0.1 45)" : "oklch(0.42 0.02 250)",
-        strokeWidth: isLoop ? 2 : 1.75,
+        stroke: isLoop ? "#e0a469" : "rgba(23,23,25,0.22)",
+        strokeWidth: 1.5,
+        strokeDasharray: isLoop ? "5 4" : undefined,
       },
       labelStyle: {
-        fill: "oklch(0.35 0.02 250)",
-        fontSize: 12,
+        fill: "#6e6e6e",
+        fontSize: 11,
         fontWeight: 500,
+        letterSpacing: "0.02em",
       },
       labelBgStyle: {
-        fill: "oklch(0.995 0 0)",
-        fillOpacity: 0.95,
+        fill: "#ffffff",
+        fillOpacity: 1,
       },
-      labelBgPadding: [6, 4] as [number, number],
-      labelBgBorderRadius: 4,
+      labelBgPadding: [7, 4] as [number, number],
+      labelBgBorderRadius: 999,
     };
   });
 
-  return { nodes, edges };
+  const graph = g.graph();
+
+  return {
+    nodes,
+    edges,
+    bounds: {
+      width: Math.round(graph?.width ?? 0),
+      height: Math.round(graph?.height ?? 0),
+    },
+  };
 }

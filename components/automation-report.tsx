@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowUpRight, ChevronDown } from "lucide-react";
+import { ArrowUpRight, Check, Minus, Plus } from "lucide-react";
 
 import { WorkflowDiagram } from "@/components/workflow-diagram";
 import { cn } from "@/lib/utils";
@@ -12,45 +12,108 @@ import type {
   WorkflowModel,
 } from "@/lib/workflow-model";
 
-function SectionHeading({
+/* ------------------------------------------------------------------ *
+ * Primitives
+ * ------------------------------------------------------------------ */
+
+function SectionHeader({
+  index,
   kicker,
   title,
-  light = false,
+  intro,
 }: {
+  index: string;
   kicker: string;
   title: string;
-  light?: boolean;
+  intro?: string;
 }) {
   return (
-    <div className="max-w-3xl space-y-4">
-      <p
-        className={cn(
-          "pr-body text-sm",
-          light ? "text-white/55" : "text-[var(--pr-muted)]",
-        )}
-      >
-        {kicker}
+    <header className="space-y-6">
+      <div className="flex items-baseline gap-4">
+        <span className="pr-body text-xs tabular-nums text-[var(--pr-muted)]">
+          {index}
+        </span>
+        <span className="pr-label">{kicker}</span>
+      </div>
+      <hr className="pr-rule" />
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,21rem)] lg:items-start lg:gap-12">
+        <h2 className="pr-display max-w-2xl text-[2rem] text-[var(--pr-ink)] sm:text-4xl md:text-[3.25rem]">
+          {title}
+        </h2>
+        {intro ? (
+          <p className="pr-body text-[15px] leading-[1.7] text-[var(--pr-muted)] lg:pt-2">
+            {intro}
+          </p>
+        ) : null}
+      </div>
+    </header>
+  );
+}
+
+function FieldBlock({
+  label,
+  children,
+  light = false,
+  className,
+}: {
+  label: string;
+  children: React.ReactNode;
+  light?: boolean;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      <p className={cn("pr-label mb-2.5", light && "pr-label-light")}>
+        {label}
       </p>
-      <h2
-        className={cn(
-          "pr-display text-3xl md:text-5xl",
-          light ? "text-[var(--pr-cream)]" : "text-[var(--pr-soft)]",
-        )}
-      >
-        {title}
-      </h2>
+      {children}
     </div>
   );
 }
 
-function QuietList({ items, limit = 4 }: { items: string[]; limit?: number }) {
+function BodyText({
+  children,
+  light = false,
+  className,
+}: {
+  children: React.ReactNode;
+  light?: boolean;
+  className?: string;
+}) {
+  return (
+    <p
+      className={cn(
+        "pr-body text-[15px] leading-[1.65]",
+        light ? "text-white/70" : "text-[var(--pr-soft)]",
+        className,
+      )}
+    >
+      {children}
+    </p>
+  );
+}
+
+function MarkedList({
+  items,
+  limit = 6,
+  light = false,
+}: {
+  items: string[];
+  limit?: number;
+  light?: boolean;
+}) {
   if (!items.length) return null;
   return (
-    <ul className="space-y-3">
+    <ul className="space-y-2.5">
       {items.slice(0, limit).map((item) => (
         <li
           key={item}
-          className="pr-body border-l border-black/10 pl-3 text-[15px] leading-6 text-[var(--pr-muted)]"
+          className={cn(
+            "pr-body pr-arrow-item text-[14.5px] leading-[1.6]",
+            light
+              ? "pr-arrow-item-light text-white/70"
+              : "text-[var(--pr-soft)]",
+          )}
         >
           {item}
         </li>
@@ -59,7 +122,7 @@ function QuietList({ items, limit = 4 }: { items: string[]; limit?: number }) {
   );
 }
 
-function statusLabel(status: AgentToolRef["status"]) {
+function toolStatusLabel(status: AgentToolRef["status"]) {
   switch (status) {
     case "verified":
       return "Ready";
@@ -70,135 +133,176 @@ function statusLabel(status: AgentToolRef["status"]) {
   }
 }
 
+function ToolChips({
+  tools,
+  limit = 8,
+  light = false,
+}: {
+  tools: AgentToolRef[];
+  limit?: number;
+  light?: boolean;
+}) {
+  if (!tools.length) return null;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {tools.slice(0, limit).map((tool) => (
+        <span
+          key={`${tool.name}-${tool.purpose}`}
+          title={tool.purpose}
+          className={cn("pr-chip pr-body", light && "pr-chip-light")}
+        >
+          <span
+            aria-hidden
+            className={cn(
+              "size-1.5 rounded-full",
+              tool.status === "verified"
+                ? "bg-emerald-500"
+                : tool.status === "proposed"
+                  ? "bg-amber-500"
+                  : light
+                    ? "bg-white/35"
+                    : "bg-black/25",
+            )}
+          />
+          {tool.name}
+          <span
+            className={cn(
+              "text-[11px]",
+              light ? "text-white/45" : "text-[var(--pr-muted)]",
+            )}
+          >
+            {toolStatusLabel(tool.status)}
+          </span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function feasibilityLabel(value: AgentOpportunity["feasibility"]["overall"]) {
   switch (value) {
     case "high":
-      return "Looks buildable";
+      return "Buildable now";
     case "medium":
       return "Promising";
     default:
-      return "Harder";
+      return "Ambitious";
   }
 }
 
+/* ------------------------------------------------------------------ *
+ * Section 02 — opportunity card
+ * ------------------------------------------------------------------ */
+
 function AgentCard({ agent }: { agent: AgentOpportunity }) {
   const [open, setOpen] = useState(false);
+  const rank = String(agent.rank).padStart(2, "0");
 
   return (
-    <article className="pr-card">
-      <div className="pr-dark-panel relative min-h-[220px] p-6 md:p-8">
-        <div className="flex items-start justify-between gap-4">
-          <p className="pr-body text-sm text-white/55">
-            Idea {agent.rank} · {feasibilityLabel(agent.feasibility.overall)}
-          </p>
-          <ArrowUpRight className="size-5 text-white/70" />
+    <article className="pr-card pr-card-hover">
+      {/* Head: rank + name + mission */}
+      <div className="grid gap-6 p-6 md:grid-cols-[4.5rem_minmax(0,1fr)] md:gap-8 md:p-9">
+        <div className="flex items-start justify-between md:flex-col md:gap-4">
+          <span className="pr-display text-[2.5rem] leading-none text-[var(--pr-ink)]/15">
+            {rank}
+          </span>
+          <ArrowUpRight
+            aria-hidden
+            className="size-4 text-[var(--pr-muted)] md:hidden"
+          />
         </div>
-        <h3 className="pr-display mt-10 max-w-xl text-3xl text-[var(--pr-cream)] md:text-4xl">
-          {agent.name}
-        </h3>
-        <p className="pr-body mt-4 max-w-2xl text-[15px] leading-7 text-white/70">
-          {agent.mission}
-        </p>
+
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="pr-chip pr-body">
+              {feasibilityLabel(agent.feasibility.overall)}
+            </span>
+            {agent.trigger.type !== "unknown" ? (
+              <span className="pr-chip pr-body capitalize">
+                {agent.trigger.type}
+              </span>
+            ) : null}
+          </div>
+          <h3 className="pr-display max-w-xl text-2xl text-[var(--pr-ink)] md:text-[2rem]">
+            {agent.name}
+          </h3>
+          <BodyText className="max-w-2xl">{agent.mission}</BodyText>
+        </div>
       </div>
 
-      <div className="space-y-6 p-6 md:p-8">
-        <div className="grid gap-6 md:grid-cols-2">
-          <div>
-            <p className="pr-body mb-2 text-sm text-[var(--pr-muted)]">Today</p>
-            <p className="pr-body text-[15px] leading-7 text-[var(--pr-ink)]">
+      {/* Before / after contrast — the heart of the card */}
+      <div className="grid border-t border-[var(--pr-line-soft)] md:grid-cols-2">
+        <div className="border-b border-[var(--pr-line-soft)] p-6 md:border-r md:border-b-0 md:p-9">
+          <FieldBlock label="Today">
+            <BodyText className="text-[var(--pr-muted)]">
               {agent.currentWorkflow}
-            </p>
-          </div>
-          <div>
-            <p className="pr-body mb-2 text-sm text-[var(--pr-muted)]">
-              With an agent
-            </p>
-            <p className="pr-body text-[15px] leading-7 text-[var(--pr-ink)]">
+            </BodyText>
+          </FieldBlock>
+        </div>
+        <div className="bg-[var(--pr-bg)]/70 p-6 md:p-9">
+          <FieldBlock label="With an agent">
+            <BodyText className="text-[var(--pr-ink)]">
               {agent.autonomousWorkflow}
-            </p>
-          </div>
+            </BodyText>
+          </FieldBlock>
         </div>
+      </div>
 
-        <div className="grid gap-4 border-t border-black/5 pt-6 sm:grid-cols-3">
-          <div>
-            <p className="pr-body mb-2 text-sm text-[var(--pr-muted)]">
-              Starts when
-            </p>
-            <p className="pr-body text-[15px] leading-6 text-[var(--pr-ink)]">
-              {agent.trigger.detail}
-            </p>
-          </div>
-          <div>
-            <p className="pr-body mb-2 text-sm text-[var(--pr-muted)]">
-              Why it matters
-            </p>
-            <p className="pr-body text-[15px] leading-6 text-[var(--pr-ink)]">
-              {agent.impact.summary}
-            </p>
-          </div>
-          <div>
-            <p className="pr-body mb-2 text-sm text-[var(--pr-muted)]">
-              You stay involved for
-            </p>
-            <QuietList items={agent.humanInvolvement} limit={3} />
-          </div>
-        </div>
+      {/* Facts row */}
+      <div className="grid gap-6 border-t border-[var(--pr-line-soft)] p-6 md:grid-cols-3 md:gap-8 md:p-9">
+        <FieldBlock label="Starts when">
+          <BodyText className="text-[14.5px]">{agent.trigger.detail}</BodyText>
+        </FieldBlock>
+        <FieldBlock label="Why it matters">
+          <BodyText className="text-[14.5px]">{agent.impact.summary}</BodyText>
+        </FieldBlock>
+        <FieldBlock label="You stay involved for">
+          <MarkedList items={agent.humanInvolvement} limit={3} />
+        </FieldBlock>
+      </div>
 
+      {/* Expandable detail */}
+      <div className="border-t border-[var(--pr-line-soft)]">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="pr-body inline-flex items-center gap-2 text-sm text-[var(--pr-ink)]"
+          aria-expanded={open}
+          className="pr-body flex w-full items-center justify-between gap-4 px-6 py-5 text-left text-sm text-[var(--pr-ink)] transition-colors hover:bg-[var(--pr-bg)] md:px-9"
         >
-          {open ? "Hide details" : "Show how it would work"}
-          <ChevronDown
-            className={cn("size-4 transition-transform", open && "rotate-180")}
-          />
+          <span>{open ? "Hide the details" : "How it would work"}</span>
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-[var(--pr-line)]">
+            {open ? (
+              <Minus aria-hidden className="size-3.5" />
+            ) : (
+              <Plus aria-hidden className="size-3.5" />
+            )}
+          </span>
         </button>
 
         {open ? (
-          <div className="grid gap-6 border-t border-black/5 pt-6 md:grid-cols-2">
-            <div>
-              <p className="pr-body mb-2 text-sm text-[var(--pr-muted)]">
-                Decisions it makes
-              </p>
-              <QuietList items={agent.reasoning} />
-            </div>
-            <div>
-              <p className="pr-body mb-2 text-sm text-[var(--pr-muted)]">
-                How it checks success
-              </p>
-              <QuietList items={agent.verification} />
-            </div>
-            <div>
-              <p className="pr-body mb-2 text-sm text-[var(--pr-muted)]">
-                If something fails
-              </p>
-              <QuietList items={agent.recovery} />
-            </div>
-            <div>
-              <p className="pr-body mb-2 text-sm text-[var(--pr-muted)]">
-                Building blocks
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {agent.tools.slice(0, 6).map((tool) => (
-                  <span
-                    key={`${tool.name}-${tool.purpose}`}
-                    className="pr-body rounded-full border border-black/8 bg-[var(--pr-bg)] px-3 py-1.5 text-xs text-[var(--pr-ink)]"
-                  >
-                    {tool.name}
-                    <span className="ml-2 text-[var(--pr-muted)]">
-                      {statusLabel(tool.status)}
-                    </span>
-                  </span>
-                ))}
-              </div>
-            </div>
+          <div className="grid gap-8 border-t border-[var(--pr-line-soft)] bg-[var(--pr-bg)]/60 p-6 md:grid-cols-2 md:p-9">
+            <FieldBlock label="Decisions it makes">
+              <MarkedList items={agent.reasoning} />
+            </FieldBlock>
+            <FieldBlock label="How it checks success">
+              <MarkedList items={agent.verification} />
+            </FieldBlock>
+            <FieldBlock label="If something fails">
+              <MarkedList items={agent.recovery} />
+            </FieldBlock>
+            <FieldBlock label="Building blocks">
+              <ToolChips tools={agent.tools} limit={6} />
+            </FieldBlock>
           </div>
         ) : null}
       </div>
     </article>
   );
 }
+
+/* ------------------------------------------------------------------ *
+ * Report
+ * ------------------------------------------------------------------ */
 
 export function AutomationReportView({
   report,
@@ -212,191 +316,288 @@ export function AutomationReportView({
   const opportunities = [...report.agentOpportunities].sort(
     (a, b) => a.rank - b.rank,
   );
+  const recommended = report.recommendedAgent;
+  const stepCount = recommended.executionPlan.length;
+
+  const heroStats = [
+    { value: String(opportunities.length), label: "Agents worth building" },
+    { value: String(stepCount), label: "Steps in the first build" },
+    {
+      value: String(report.howYouWorkToday.keyObservations.length),
+      label: "Observations from your session",
+    },
+  ];
 
   return (
     <div className="pacific-report min-h-screen">
-      <header className="pr-dark-panel px-4 py-10 md:px-8 md:py-16">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-10">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <p className="pr-body text-sm tracking-[-0.02em] text-white/70">
+      {/* ---------------- Hero ---------------- */}
+      <header className="pr-dark-panel pr-grain overflow-hidden">
+        <div className="relative z-10 mx-auto w-full max-w-6xl px-5 py-7 md:px-10">
+          <div className="flex items-center justify-between gap-4">
+            <span className="pr-body text-sm tracking-[-0.02em] text-[var(--pr-cream)]">
               pacific.
-            </p>
-            {onNewSession ? (
-              <button type="button" className="pr-pill" onClick={onNewSession}>
-                New session
-              </button>
-            ) : null}
+            </span>
+            <span className="pr-label pr-label-light hidden sm:block">
+              Automation blueprint
+            </span>
           </div>
+        </div>
 
-          <div className="max-w-4xl space-y-6">
-            <h1 className="pr-display text-4xl text-[var(--pr-cream)] md:text-6xl lg:text-[4.5rem]">
+        <hr className="pr-rule pr-rule-light relative z-10 mx-auto max-w-6xl" />
+
+        <div className="relative z-10 mx-auto w-full max-w-6xl px-5 pt-14 pb-12 md:px-10 md:pt-24 md:pb-16">
+          <div className="max-w-3xl space-y-7">
+            <p className="pr-label pr-label-light">Your session, analysed</p>
+            <h1 className="pr-display text-[2.5rem] text-[var(--pr-cream)] sm:text-6xl md:text-[4.25rem]">
               Here&apos;s what we can automate.
             </h1>
-            <p className="pr-body max-w-2xl text-lg leading-8 text-white/70 md:text-xl">
-              First the way you work today. Then agents that can own the outcome
-              with as little hand-holding as possible.
+            <p className="pr-body max-w-xl text-base leading-[1.7] text-white/65 md:text-lg">
+              First the way you work today. Then the agents that could own the
+              outcome — with as little hand-holding as possible.
             </p>
+            {onNewSession ? (
+              <div className="pt-2">
+                <button type="button" className="pr-pill" onClick={onNewSession}>
+                  Start a new session
+                  <ArrowUpRight aria-hidden className="size-4" />
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Stat strip grounds the hero and kills the empty black gap */}
+        <div className="relative z-10 border-t border-white/10">
+          <div className="mx-auto grid w-full max-w-6xl grid-cols-1 sm:grid-cols-3">
+            {heroStats.map((stat, i) => (
+              <div
+                key={stat.label}
+                className={cn(
+                  "px-5 py-6 md:px-10 md:py-8",
+                  i > 0 && "border-t border-white/10 sm:border-t-0 sm:border-l",
+                )}
+              >
+                <p className="pr-display text-3xl text-[var(--pr-cream)] md:text-4xl">
+                  {stat.value}
+                </p>
+                <p className="pr-body mt-2 text-[13px] leading-5 text-white/50">
+                  {stat.label}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </header>
 
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-20 px-4 py-14 md:px-8 md:py-20">
-        <section className="space-y-8">
-          <SectionHeading
-            kicker="01 — Current workflow"
+      <main className="mx-auto flex w-full max-w-6xl flex-col gap-24 px-5 py-20 md:gap-32 md:px-10 md:py-28">
+        {/* ---------------- 01 — current workflow ---------------- */}
+        <section className="space-y-10">
+          <SectionHeader
+            index="01"
+            kicker="Current workflow"
             title="How you work today."
+            intro="What Pacific saw during your session, in the order it happens."
           />
+
+          <p className="pr-body max-w-3xl text-lg leading-[1.6] text-[var(--pr-soft)] md:text-xl md:leading-[1.55]">
+            {report.howYouWorkToday.summary}
+          </p>
+
           <WorkflowDiagram
             diagram={report.howYouWorkToday.diagram}
             workflow={workflow}
             variant="wonderful"
           />
-          <p className="pr-body max-w-3xl text-lg leading-8 text-[var(--pr-soft)]">
-            {report.howYouWorkToday.summary}
-          </p>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="pr-card p-6">
-              <p className="pr-body mb-4 text-sm text-[var(--pr-muted)]">
-                What stood out
-              </p>
-              <QuietList items={report.howYouWorkToday.keyObservations} />
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <div className="pr-card p-6 md:p-8">
+              <FieldBlock label="What stood out">
+                <MarkedList items={report.howYouWorkToday.keyObservations} />
+              </FieldBlock>
             </div>
-            <div className="pr-card p-6">
-              <p className="pr-body mb-4 text-sm text-[var(--pr-muted)]">
-                Still unclear
-              </p>
-              {report.howYouWorkToday.uncertainties.length ? (
-                <QuietList items={report.howYouWorkToday.uncertainties} />
-              ) : (
-                <p className="pr-body text-[15px] text-[var(--pr-muted)]">
-                  Nothing major.
-                </p>
-              )}
+            <div className="pr-card p-6 md:p-8">
+              <FieldBlock label="Still unclear">
+                {report.howYouWorkToday.uncertainties.length ? (
+                  <MarkedList items={report.howYouWorkToday.uncertainties} />
+                ) : (
+                  <BodyText className="text-[var(--pr-muted)]">
+                    Nothing major — the picture is clear enough to design from.
+                  </BodyText>
+                )}
+              </FieldBlock>
             </div>
           </div>
         </section>
 
-        <section className="space-y-8">
-          <SectionHeading
-            kicker="02 — Opportunities"
-            title="Solving the parts that move the work."
+        {/* ---------------- 02 — opportunities ---------------- */}
+        <section className="space-y-10">
+          <SectionHeader
+            index="02"
+            kicker="Opportunities"
+            title="Where an agent could take over."
+            intro="Each one aims to finish the job end to end, not just speed up a single click."
           />
-          <p className="pr-body max-w-2xl text-[15px] leading-7 text-[var(--pr-muted)]">
-            A few ambitious agents — each one aims to finish the job, not just
-            speed up one click.
-          </p>
-          <div className="space-y-6">
+          <div className="space-y-5">
             {opportunities.map((agent) => (
               <AgentCard key={`${agent.rank}-${agent.name}`} agent={agent} />
             ))}
           </div>
         </section>
 
-        <section className="space-y-8">
-          <SectionHeading
-            kicker="03 — Recommended start"
+        {/* ---------------- 03 — recommended ---------------- */}
+        <section className="space-y-10">
+          <SectionHeader
+            index="03"
+            kicker="Recommended start"
             title="The best agent to build first."
           />
 
-          <div className="pr-card overflow-hidden">
-            <div className="pr-dark-panel space-y-5 p-6 md:p-10">
-              <p className="pr-body text-sm text-white/55">Recommended</p>
-              <h3 className="pr-display max-w-3xl text-3xl text-[var(--pr-cream)] md:text-5xl">
-                {report.recommendedAgent.name}
-              </h3>
-              <p className="pr-body max-w-3xl text-lg leading-8 text-white/70">
-                {report.recommendedAgent.why}
-              </p>
+          <div className="pr-card">
+            {/* Dark showcase head — the single hero moment of the page */}
+            <div className="pr-dark-panel pr-grain relative overflow-hidden p-6 md:p-12">
+              <div className="relative z-10 space-y-6">
+                <div className="flex items-center gap-2">
+                  <span className="pr-chip pr-chip-light pr-body">
+                    <Check aria-hidden className="size-3" />
+                    Recommended
+                  </span>
+                </div>
+                <h3 className="pr-display max-w-3xl text-[1.75rem] text-[var(--pr-cream)] sm:text-4xl md:text-[3rem]">
+                  {recommended.name}
+                </h3>
+                <BodyText light className="max-w-2xl text-base md:text-[17px]">
+                  {recommended.why}
+                </BodyText>
+                <div className="pt-2">
+                  <ToolChips tools={recommended.integrations} light limit={8} />
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-10 p-6 md:p-10">
-              <div>
-                <p className="pr-body mb-5 text-sm text-[var(--pr-muted)]">
-                  What the agent would do
-                </p>
-                <ol className="space-y-4">
-                  {report.recommendedAgent.executionPlan.map((step, index) => (
+            {/* Execution plan */}
+            <div className="p-6 md:p-12">
+              <FieldBlock label={`What it would do · ${stepCount} steps`}>
+                <ol className="mt-1">
+                  {recommended.executionPlan.map((step, index) => (
                     <li
                       key={step}
-                      className="flex gap-4 border-b border-black/5 pb-4 last:border-b-0"
+                      className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3 border-b border-[var(--pr-line-soft)] py-4 last:border-b-0 md:gap-5"
                     >
-                      <span className="pr-display w-8 shrink-0 text-xl text-[var(--pr-soft)]">
+                      <span className="pr-body pt-0.5 text-xs tabular-nums text-[var(--pr-muted)]">
                         {String(index + 1).padStart(2, "0")}
                       </span>
-                      <span className="pr-body text-[15px] leading-7 text-[var(--pr-ink)]">
+                      <BodyText className="text-[var(--pr-ink)]">
                         {step}
-                      </span>
+                      </BodyText>
                     </li>
                   ))}
                 </ol>
-              </div>
+              </FieldBlock>
+            </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                {[
-                  ["How it knows it worked", report.recommendedAgent.verificationStrategy],
-                  ["If something goes wrong", report.recommendedAgent.recoveryStrategy],
-                  ["Where you approve", report.recommendedAgent.humanApprovalStrategy],
-                  ["How realistic is this?", report.recommendedAgent.feasibilityAssessment],
-                ].map(([title, body]) => (
-                  <div key={title} className="rounded-2xl bg-[var(--pr-bg)] p-5">
-                    <p className="pr-body mb-2 text-sm text-[var(--pr-muted)]">
-                      {title}
-                    </p>
-                    <p className="pr-body text-[15px] leading-7 text-[var(--pr-ink)]">
-                      {body}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="rounded-2xl bg-[var(--pr-dark)] p-5 md:p-6">
-                <p className="pr-body mb-2 text-sm text-white/55">
-                  Important constraint
-                </p>
-                <p className="pr-body text-[15px] leading-7 text-white/80">
-                  {report.recommendedAgent.environmentConstraints}
-                </p>
-              </div>
-
-              <div>
-                <p className="pr-body mb-4 text-sm text-[var(--pr-muted)]">
-                  Building blocks
-                </p>
-                <div className="mb-4 flex flex-wrap gap-2">
-                  {report.recommendedAgent.integrations.map((tool) => (
-                    <span
-                      key={`${tool.name}-${tool.purpose}`}
-                      className="pr-body rounded-full border border-black/8 bg-white px-3 py-1.5 text-xs text-[var(--pr-ink)]"
-                    >
-                      {tool.name}
-                      <span className="ml-2 text-[var(--pr-muted)]">
-                        {statusLabel(tool.status)}
-                      </span>
-                    </span>
-                  ))}
+            {/* Operating details */}
+            <div className="grid border-t border-[var(--pr-line-soft)] sm:grid-cols-2">
+              {(
+                [
+                  ["How it knows it worked", recommended.verificationStrategy],
+                  ["If something goes wrong", recommended.recoveryStrategy],
+                  ["Where you approve", recommended.humanApprovalStrategy],
+                  ["How realistic this is", recommended.feasibilityAssessment],
+                ] as const
+              ).map(([label, body], i) => (
+                <div
+                  key={label}
+                  className={cn(
+                    "p-6 md:p-9",
+                    "border-b border-[var(--pr-line-soft)]",
+                    i % 2 === 0 && "sm:border-r",
+                    i >= 2 && "sm:border-b-0",
+                  )}
+                >
+                  <FieldBlock label={label}>
+                    <BodyText className="text-[14.5px]">{body}</BodyText>
+                  </FieldBlock>
                 </div>
-                <p className="pr-body max-w-3xl text-[15px] leading-7 text-[var(--pr-muted)]">
-                  {report.recommendedAgent.architecture}
-                </p>
+              ))}
+            </div>
+
+            {/* Architecture + constraint */}
+            <div className="grid gap-6 border-t border-[var(--pr-line-soft)] bg-[var(--pr-bg)]/60 p-6 md:grid-cols-2 md:gap-10 md:p-9">
+              <FieldBlock label="How it would be put together">
+                <BodyText className="text-[14.5px]">
+                  {recommended.architecture}
+                </BodyText>
+              </FieldBlock>
+              <div className="pr-dark-panel rounded-[1.1rem] p-5 md:p-6">
+                <FieldBlock label="One thing to design around" light>
+                  <BodyText light className="text-[14.5px]">
+                    {recommended.environmentConstraints}
+                  </BodyText>
+                </FieldBlock>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="space-y-6 pb-10">
-          <SectionHeading
-            kicker="04 — Open questions"
+        {/* ---------------- 04 — open questions ---------------- */}
+        <section className="space-y-10">
+          <SectionHeader
+            index="04"
+            kicker="Open questions"
             title="A few things to confirm."
+            intro="None of these block a start — they just shape how the first agent gets built."
           />
-          {report.stillNeedsToKnow.length > 0 ? (
-            <QuietList items={report.stillNeedsToKnow} limit={8} />
+          {report.stillNeedsToKnow.length ? (
+            <ol className="pr-card divide-y divide-[var(--pr-line-soft)]">
+              {report.stillNeedsToKnow.slice(0, 8).map((question, index) => (
+                <li
+                  key={question}
+                  className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3 p-6 md:gap-5 md:px-9"
+                >
+                  <span className="pr-body pt-0.5 text-xs tabular-nums text-[var(--pr-muted)]">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <BodyText className="text-[var(--pr-ink)]">
+                    {question}
+                  </BodyText>
+                </li>
+              ))}
+            </ol>
           ) : (
-            <p className="pr-body text-[15px] text-[var(--pr-muted)]">
-              Nothing blocking for now — enough to start designing.
-            </p>
+            <div className="pr-card p-6 md:p-9">
+              <BodyText className="text-[var(--pr-muted)]">
+                Nothing blocking — there&apos;s enough here to start designing.
+              </BodyText>
+            </div>
           )}
         </section>
-      </div>
+      </main>
+
+      {/* ---------------- Footer ---------------- */}
+      <footer className="pr-dark-panel pr-grain overflow-hidden">
+        <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-8 px-5 py-14 md:flex-row md:items-end md:justify-between md:px-10 md:py-20">
+          <div className="max-w-xl space-y-4">
+            <p className="pr-label pr-label-light">End of blueprint</p>
+            <p className="pr-display text-2xl text-[var(--pr-cream)] md:text-[2.5rem]">
+              Want to go deeper on one of these?
+            </p>
+            <BodyText light className="max-w-md">
+              Run another session and walk through the workflow again — the more
+              Pacific sees, the sharper the plan.
+            </BodyText>
+          </div>
+          {onNewSession ? (
+            <button
+              type="button"
+              className="pr-pill pr-pill-ghost shrink-0"
+              onClick={onNewSession}
+            >
+              Start a new session
+              <ArrowUpRight aria-hidden className="size-4" />
+            </button>
+          ) : null}
+        </div>
+      </footer>
     </div>
   );
 }

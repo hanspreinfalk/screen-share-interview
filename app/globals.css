@@ -130,8 +130,8 @@
   }
 }
 
-/* Wonderful-inspired report surface (scoped) */
-.pacific-report {
+/* Wonderful-inspired surface shared by the live interview and the report */
+.pacific-surface {
   --pr-bg: #f6f6f4;
   --pr-ink: #171719;
   --pr-muted: #6e6e6e;
@@ -146,7 +146,7 @@
   text-rendering: optimizeLegibility;
 }
 
-.pacific-report .pr-display {
+.pacific-surface .pr-display {
   font-family: var(--font-display), var(--font-sans), sans-serif;
   font-weight: 300;
   letter-spacing: -0.035em;
@@ -154,12 +154,12 @@
   text-wrap: balance;
 }
 
-.pacific-report .pr-body {
+.pacific-surface .pr-body {
   letter-spacing: -0.015em;
 }
 
 /* Small uppercase label used for eyebrows / field titles */
-.pacific-report .pr-label {
+.pacific-surface .pr-label {
   font-size: 0.6875rem;
   font-weight: 500;
   letter-spacing: 0.1em;
@@ -167,11 +167,11 @@
   color: var(--pr-muted);
 }
 
-.pacific-report .pr-label-light {
+.pacific-surface .pr-label-light {
   color: rgba(250, 250, 250, 0.5);
 }
 
-.pacific-report .pr-pill {
+.pacific-surface .pr-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -189,23 +189,23 @@
     border-color 180ms ease;
 }
 
-.pacific-report .pr-pill:hover {
+.pacific-surface .pr-pill:hover {
   background: #fff;
 }
 
-.pacific-report .pr-pill-ghost {
+.pacific-surface .pr-pill-ghost {
   background: transparent;
   color: var(--pr-cream);
   border: 1px solid rgba(250, 250, 250, 0.22);
 }
 
-.pacific-report .pr-pill-ghost:hover {
+.pacific-surface .pr-pill-ghost:hover {
   background: rgba(250, 250, 250, 0.08);
   border-color: rgba(250, 250, 250, 0.4);
 }
 
 /* Static chip (not clickable) */
-.pacific-report .pr-chip {
+.pacific-surface .pr-chip {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
@@ -218,13 +218,13 @@
   color: var(--pr-soft);
 }
 
-.pacific-report .pr-chip-light {
+.pacific-surface .pr-chip-light {
   border-color: rgba(250, 250, 250, 0.16);
   background: rgba(250, 250, 250, 0.06);
   color: rgba(250, 250, 250, 0.82);
 }
 
-.pacific-report .pr-card {
+.pacific-surface .pr-card {
   border: 1px solid var(--pr-line);
   border-radius: 1.5rem;
   background: #fff;
@@ -232,25 +232,25 @@
 }
 
 /* Subtle lift on interactive cards */
-.pacific-report .pr-card-hover {
+.pacific-surface .pr-card-hover {
   transition:
     border-color 220ms ease,
     box-shadow 220ms ease,
     transform 220ms ease;
 }
 
-.pacific-report .pr-card-hover:hover {
+.pacific-surface .pr-card-hover:hover {
   border-color: rgba(23, 23, 25, 0.16);
   box-shadow: 0 24px 60px -40px rgba(17, 17, 19, 0.45);
 }
 
-.pacific-report .pr-inset {
+.pacific-surface .pr-inset {
   border-radius: 1.1rem;
   background: var(--pr-bg);
   border: 1px solid var(--pr-line-soft);
 }
 
-.pacific-report .pr-dark-panel {
+.pacific-surface .pr-dark-panel {
   position: relative;
   background:
     radial-gradient(
@@ -263,7 +263,7 @@
 }
 
 /* Fine grain so large black areas don't read as flat/cheap */
-.pacific-report .pr-grain::after {
+.pacific-surface .pr-grain::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -273,7 +273,7 @@
 }
 
 /* Hairline divider that fades out, used under section headers */
-.pacific-report .pr-rule {
+.pacific-surface .pr-rule {
   height: 1px;
   border: 0;
   background: linear-gradient(
@@ -284,7 +284,7 @@
   );
 }
 
-.pacific-report .pr-rule-light {
+.pacific-surface .pr-rule-light {
   background: linear-gradient(
     90deg,
     rgba(250, 250, 250, 0.22),
@@ -294,12 +294,12 @@
 }
 
 /* Arrow-marked list item */
-.pacific-report .pr-arrow-item {
+.pacific-surface .pr-arrow-item {
   position: relative;
   padding-left: 1.1rem;
 }
 
-.pacific-report .pr-arrow-item::before {
+.pacific-surface .pr-arrow-item::before {
   content: "";
   position: absolute;
   left: 0;
@@ -309,12 +309,102 @@
   background: rgba(23, 23, 25, 0.35);
 }
 
-.pacific-report .pr-arrow-item-light::before {
+.pacific-surface .pr-arrow-item-light::before {
   background: rgba(250, 250, 250, 0.4);
 }
 
+/* ---------------------------------------------------------------------------
+   Live interview
+   Reuses the report's tokens so the two phases feel like one product.
+   --------------------------------------------------------------------------- */
+
+/* Breathing halo behind the voice orb while Pacific listens */
+.pacific-surface .pr-orb-halo {
+  animation: pr-breathe 3.4s ease-in-out infinite;
+}
+
+/* Faster, stronger pulse while Pacific speaks */
+.pacific-surface .pr-orb-halo-active {
+  animation: pr-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pr-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 0.68;
+  }
+}
+
+@keyframes pr-pulse {
+  0%,
+  100% {
+    transform: scale(1.02);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.9;
+  }
+}
+
+/* Three-bar equalizer shown while Pacific speaks */
+.pacific-surface .pr-eq-bar {
+  animation: pr-eq 900ms ease-in-out infinite;
+}
+
+@keyframes pr-eq {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+/* Contextual share-screen prompt and time warnings */
+.pacific-surface .pr-rise {
+  animation: pr-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes pr-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Newly arrived transcript lines */
+.pacific-surface .pr-fade-in {
+  animation: pr-fade-in 320ms ease both;
+}
+
+@keyframes pr-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Transcript fades out at the top edge instead of hard-clipping */
+.pacific-surface .pr-transcript-mask {
+  mask-image: linear-gradient(to bottom, transparent, #000 2.25rem);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 2.25rem);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .pacific-report * {
+  .pacific-surface * {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
   }

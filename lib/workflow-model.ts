@@ -151,6 +151,27 @@ export type WorkflowDiagramEdge = {
   kind?: "default" | "yes" | "no" | "loop" | "handoff";
 };
 
+/** Node kinds for the proposed autonomous workflow (diagram 2). */
+export type AgentDiagramNode = {
+  id: string;
+  label: string;
+  kind: "trigger" | "agent" | "decision" | "verify" | "human" | "end";
+  application?: string;
+};
+
+export type AgentDiagramEdge = {
+  id: string;
+  source: string;
+  target: string;
+  label?: string;
+  kind?: "default" | "yes" | "no" | "retry" | "escalate";
+};
+
+export type AgentDiagram = {
+  nodes: AgentDiagramNode[];
+  edges: AgentDiagramEdge[];
+};
+
 export type AgentToolRef = {
   name: string;
   purpose: string;
@@ -207,6 +228,7 @@ export type AutomationReport = {
     humanApprovalStrategy: string;
     feasibilityAssessment: string;
     environmentConstraints: string;
+    diagram: AgentDiagram;
   };
   stillNeedsToKnow: string[];
 };

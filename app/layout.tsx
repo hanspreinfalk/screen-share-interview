@@ -22,7 +22,7 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Pacific — Workflow Consultant",
+  title: "Pacific, Workflow Consultant",
   description:
     "Live AI systems architect that watches your workflow and designs autonomous agents",
 };

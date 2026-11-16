@@ -60,6 +60,25 @@ function waitForIceGathering(pc: RTCPeerConnection) {
   });
 }
 
+async function requestDisplayMedia() {
+  try {
+    return await navigator.mediaDevices.getDisplayMedia({
+      video: {
+        frameRate: { ideal: 5, max: 10 },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+      audio: false,
+    });
+  } catch (error) {
+    throw new Error(
+      error instanceof Error && error.name === "NotAllowedError"
+        ? "Screen sharing permission was denied"
+        : "Could not start screen sharing",
+    );
+  }
+}
+
 export type RealtimeSessionCallbacks = {
   onStatus?: (status: RealtimeStatus) => void;
   onTranscript?: (line: TranscriptLine) => void;
@@ -70,6 +89,11 @@ export type RealtimeSessionCallbacks = {
     sharing: boolean;
     paused: boolean;
     viewing: boolean;
+  }) => void;
+  /** Pacific decided watching would help. Surface a Share Screen button. */
+  onScreenShareRequest?: (request: {
+    reason: string;
+    whatToShow: string;
   }) => void;
 };
 
@@ -131,24 +155,10 @@ export class RealtimeVoiceSession {
       throw new Error("Missing ephemeral client secret");
     }
 
+    // Voice first: screen sharing is opt-in and can start later in the call.
     let screen: MediaStream | null = null;
-    if (options?.withScreen !== false) {
-      try {
-        screen = await navigator.mediaDevices.getDisplayMedia({
-          video: {
-            frameRate: { ideal: 5, max: 10 },
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          },
-          audio: false,
-        });
-      } catch (error) {
-        throw new Error(
-          error instanceof Error && error.name === "NotAllowedError"
-            ? "Screen sharing permission was denied"
-            : "Could not start screen sharing",
-        );
-      }
+    if (options?.withScreen === true) {
+      screen = await requestDisplayMedia();
     }
 
     let mic: MediaStream;
@@ -246,8 +256,9 @@ export class RealtimeVoiceSession {
     });
 
     const [videoTrack] = screen.getVideoTracks();
+    // Fires when the user stops sharing from the browser's own UI.
     videoTrack?.addEventListener("ended", () => {
-      this.stopScreenSharing();
+      this.stopScreenSharing({ notifyModel: true });
     });
 
     this.startFrameLoop();
@@ -265,6 +276,51 @@ export class RealtimeVoiceSession {
       clearInterval(this.frameTimer);
       this.frameTimer = null;
     }
+  }
+
+  /**
+   * Begin screen sharing partway through a call, either because Pacific asked
+   * or the user volunteered. Tells the model the result so it can react in
+   * its next turn instead of waiting silently.
+   */
+  async startScreenSharing() {
+    if (this.screenStream) return true;
+    if (!this.handles) throw new Error("Session is not active");
+
+    let screen: MediaStream;
+    try {
+      screen = await requestDisplayMedia();
+    } catch (error) {
+      this.notifyModel(
+        "[The user declined screen sharing. Continue on voice, do not ask again, and do not imply the result will be worse.]",
+      );
+      throw error;
+    }
+
+    this.attachScreen(screen);
+    this.notifyModel(
+      "[The user is now sharing their screen. Thank them briefly, then ask them to walk through the step while you watch.]",
+    );
+    return true;
+  }
+
+  /**
+   * Send a non-spoken system note into the conversation. Used for time
+   * remaining and screen-share state so Pacific can pace itself.
+   */
+  notifyModel(text: string, options?: { triggerResponse?: boolean }) {
+    const sent = this.sendEvent({
+      type: "conversation.item.create",
+      item: {
+        type: "message",
+        role: "user",
+        content: [{ type: "input_text", text }],
+      },
+    });
+    if (sent && options?.triggerResponse) {
+      this.sendEvent({ type: "response.create" });
+    }
+    return sent;
   }
 
   setMicMuted(muted: boolean) {
@@ -291,7 +347,8 @@ export class RealtimeVoiceSession {
     }
   }
 
-  stopScreenSharing() {
+  stopScreenSharing(options?: { notifyModel?: boolean }) {
+    const wasSharing = Boolean(this.screenStream);
     this.stopFrameLoop();
     this.frameCapture.detach();
     this.screenStream?.getTracks().forEach((track) => track.stop());
@@ -303,6 +360,12 @@ export class RealtimeVoiceSession {
       paused: false,
       viewing: false,
     });
+
+    if (wasSharing && options?.notifyModel) {
+      this.notifyModel(
+        "[The user stopped sharing their screen. Acknowledge briefly if natural and continue on voice. Do not ask them to share again.]",
+      );
+    }
   }
 
   async requestFreshScreenshot(detail: "low" | "high" = "high") {
@@ -351,7 +414,7 @@ export class RealtimeVoiceSession {
 
       const note =
         options.note ??
-        `[Screen frame ${this.elapsedLabel()} — not spoken by the user. Observe silently unless relevant to the active conversation. Never invent UI that is not visible.]`;
+        `[Screen frame ${this.elapsedLabel()}, not spoken by the user. Observe silently unless relevant to the active conversation. Never invent UI that is not visible.]`;
 
       const sent = this.sendEvent({
         type: "conversation.item.create",
@@ -493,6 +556,50 @@ export class RealtimeVoiceSession {
       return;
     }
 
+    if (call.name === "request_screen_share") {
+      const reason =
+        typeof args.reason === "string"
+          ? args.reason
+          : "Seeing this would help me understand the workflow";
+      const whatToShow =
+        typeof args.whatToShow === "string" ? args.whatToShow : "";
+
+      if (this.screenStream) {
+        // Already sharing; nothing to ask for.
+        this.sendEvent({
+          type: "conversation.item.create",
+          item: {
+            type: "function_call_output",
+            call_id: call.call_id,
+            output: JSON.stringify({
+              ok: false,
+              message:
+                "The user is already sharing their screen. Just ask them to show you.",
+            }),
+          },
+        });
+        this.sendEvent({ type: "response.create" });
+        return;
+      }
+
+      this.callbacks.onScreenShareRequest?.({ reason, whatToShow });
+
+      this.sendEvent({
+        type: "conversation.item.create",
+        item: {
+          type: "function_call_output",
+          call_id: call.call_id,
+          output: JSON.stringify({
+            ok: true,
+            message:
+              "A Share Screen button is now visible. Wait for them to decide. Do not repeat the request. If they decline, continue on voice.",
+          }),
+        },
+      });
+      this.sendEvent({ type: "response.create" });
+      return;
+    }
+
     if (call.name === "request_screenshot") {
       const detail = args.detail === "high" ? "high" : "low";
       const reason =
@@ -503,7 +610,7 @@ export class RealtimeVoiceSession {
           forced: true,
           detail,
           triggerResponse: false,
-          note: `[Fresh screenshot requested by consultant — ${reason}]`,
+          note: `[Fresh screenshot requested by consultant: ${reason}]`,
         });
 
         this.sendEvent({

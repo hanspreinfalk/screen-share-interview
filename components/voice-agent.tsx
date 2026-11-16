@@ -16,7 +16,7 @@ function statusLabel(status: RealtimeStatus) {
     case "connecting":
       return "Connecting…";
     case "listening":
-      return "Listening — speak anytime";
+      return "Listening, speak anytime";
     case "speaking":
       return "Assistant speaking";
     case "error":

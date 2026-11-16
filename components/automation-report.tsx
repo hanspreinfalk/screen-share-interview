@@ -191,7 +191,7 @@ function feasibilityLabel(value: AgentOpportunity["feasibility"]["overall"]) {
 }
 
 /* ------------------------------------------------------------------ *
- * Section 02 — opportunity card
+ * Section 02: opportunity card
  * ------------------------------------------------------------------ */
 
 function AgentCard({ agent }: { agent: AgentOpportunity }) {
@@ -230,7 +230,7 @@ function AgentCard({ agent }: { agent: AgentOpportunity }) {
         </div>
       </div>
 
-      {/* Before / after contrast — the heart of the card */}
+      {/* Before / after contrast: the heart of the card */}
       <div className="grid border-t border-[var(--pr-line-soft)] md:grid-cols-2">
         <div className="border-b border-[var(--pr-line-soft)] p-6 md:border-r md:border-b-0 md:p-9">
           <FieldBlock label="Today">
@@ -329,7 +329,7 @@ export function AutomationReportView({
   ];
 
   return (
-    <div className="pacific-report min-h-screen">
+    <div className="pacific-surface min-h-screen">
       {/* ---------------- Hero ---------------- */}
       <header className="pr-dark-panel pr-grain overflow-hidden">
         <div className="relative z-10 mx-auto w-full max-w-6xl px-5 py-7 md:px-10">
@@ -353,7 +353,7 @@ export function AutomationReportView({
             </h1>
             <p className="pr-body max-w-xl text-base leading-[1.7] text-white/65 md:text-lg">
               First the way you work today. Then the agents that could own the
-              outcome — with as little hand-holding as possible.
+              outcome, with as little hand-holding as possible.
             </p>
             {onNewSession ? (
               <div className="pt-2">
@@ -390,13 +390,13 @@ export function AutomationReportView({
       </header>
 
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-24 px-5 py-20 md:gap-32 md:px-10 md:py-28">
-        {/* ---------------- 01 — current workflow ---------------- */}
+        {/* ---------------- 01: current workflow ---------------- */}
         <section className="space-y-10">
           <SectionHeader
             index="01"
             kicker="Current workflow"
             title="How you work today."
-            intro="What Pacific saw during your session, in the order it happens."
+            intro="What you walked through in the session, in the order it happens."
           />
 
           <p className="pr-body max-w-3xl text-lg leading-[1.6] text-[var(--pr-soft)] md:text-xl md:leading-[1.55]">
@@ -421,7 +421,7 @@ export function AutomationReportView({
                   <MarkedList items={report.howYouWorkToday.uncertainties} />
                 ) : (
                   <BodyText className="text-[var(--pr-muted)]">
-                    Nothing major — the picture is clear enough to design from.
+                    Nothing major. The picture is clear enough to design from.
                   </BodyText>
                 )}
               </FieldBlock>
@@ -429,7 +429,7 @@ export function AutomationReportView({
           </div>
         </section>
 
-        {/* ---------------- 02 — opportunities ---------------- */}
+        {/* ---------------- 02: opportunities ---------------- */}
         <section className="space-y-10">
           <SectionHeader
             index="02"
@@ -444,7 +444,7 @@ export function AutomationReportView({
           </div>
         </section>
 
-        {/* ---------------- 03 — recommended ---------------- */}
+        {/* ---------------- 03: recommended ---------------- */}
         <section className="space-y-10">
           <SectionHeader
             index="03"
@@ -453,7 +453,7 @@ export function AutomationReportView({
           />
 
           <div className="pr-card">
-            {/* Dark showcase head — the single hero moment of the page */}
+            {/* Dark showcase head: the single hero moment of the page */}
             <div className="pr-dark-panel pr-grain relative overflow-hidden p-6 md:p-12">
               <div className="relative z-10 space-y-6">
                 <div className="flex items-center gap-2">
@@ -473,6 +473,21 @@ export function AutomationReportView({
                 </div>
               </div>
             </div>
+
+            {/* Proposed autonomous workflow, the second diagram */}
+            {recommended.diagram?.nodes?.length ? (
+              <div className="border-b border-[var(--pr-line-soft)] p-6 md:p-12">
+                <FieldBlock label="Its autonomous workflow">
+                  <div className="mt-4">
+                    <WorkflowDiagram
+                      agentDiagram={recommended.diagram}
+                      variant="wonderful"
+                      emptyMessage="Not enough detail yet to draw the agent workflow."
+                    />
+                  </div>
+                </FieldBlock>
+              </div>
+            ) : null}
 
             {/* Execution plan */}
             <div className="p-6 md:p-12">
@@ -539,13 +554,13 @@ export function AutomationReportView({
           </div>
         </section>
 
-        {/* ---------------- 04 — open questions ---------------- */}
+        {/* ---------------- 04: open questions ---------------- */}
         <section className="space-y-10">
           <SectionHeader
             index="04"
             kicker="Open questions"
             title="A few things to confirm."
-            intro="None of these block a start — they just shape how the first agent gets built."
+            intro="None of these block a start. They just shape how the first agent gets built."
           />
           {report.stillNeedsToKnow.length ? (
             <ol className="pr-card divide-y divide-[var(--pr-line-soft)]">
@@ -566,7 +581,7 @@ export function AutomationReportView({
           ) : (
             <div className="pr-card p-6 md:p-9">
               <BodyText className="text-[var(--pr-muted)]">
-                Nothing blocking — there&apos;s enough here to start designing.
+                Nothing blocking. There&apos;s enough here to start designing.
               </BodyText>
             </div>
           )}
@@ -582,8 +597,8 @@ export function AutomationReportView({
               Want to go deeper on one of these?
             </p>
             <BodyText light className="max-w-md">
-              Run another session and walk through the workflow again — the more
-              Pacific sees, the sharper the plan.
+              Run another session and walk through the workflow again. The more
+              detail Pacific has, the sharper the plan.
             </BodyText>
           </div>
           {onNewSession ? (

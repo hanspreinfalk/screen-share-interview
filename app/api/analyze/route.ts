@@ -7,6 +7,7 @@ import type { AutomationReport, WorkflowModel } from "@/lib/workflow-model";
 type AnalyzeBody = {
   transcript?: TranscriptLine[];
   workflow?: WorkflowModel;
+  screenSharingUsed?: boolean;
 };
 
 const capabilityStatus = {
@@ -22,6 +23,59 @@ const toolRefSchema = {
     name: { type: "string" },
     purpose: { type: "string" },
     status: capabilityStatus,
+  },
+} as const;
+
+const APPLICATION_FIELD = {
+  type: "string",
+  description:
+    "Exact product name so a real logo can be rendered (e.g. 'Cursor', 'Google Chrome', 'GitHub', 'Slack'). Empty string when there is no specific application or you are unsure. Never guess a brand.",
+} as const;
+
+/** Diagram 2: the proposed autonomous agent workflow. */
+const AGENT_DIAGRAM_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["nodes", "edges"],
+  properties: {
+    nodes: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["id", "label", "kind", "application"],
+        properties: {
+          id: { type: "string" },
+          label: { type: "string" },
+          kind: {
+            type: "string",
+            enum: ["trigger", "agent", "decision", "verify", "human", "end"],
+          },
+          application: APPLICATION_FIELD,
+        },
+      },
+    },
+    edges: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["id", "source", "target", "label", "kind"],
+        properties: {
+          id: { type: "string" },
+          source: { type: "string" },
+          target: { type: "string" },
+          label: {
+            type: "string",
+            description: "Edge label, or empty string if none.",
+          },
+          kind: {
+            type: "string",
+            enum: ["default", "yes", "no", "retry", "escalate"],
+          },
+        },
+      },
+    },
   },
 } as const;
 
@@ -68,10 +122,7 @@ const REPORT_SCHEMA = {
                       "handoff",
                     ],
                   },
-                  application: {
-                    type: "string",
-                    description: "Application name, or empty string if none.",
-                  },
+                  application: APPLICATION_FIELD,
                   source: {
                     type: "string",
                     enum: ["observed", "explained", "inferred"],
@@ -197,6 +248,7 @@ const REPORT_SCHEMA = {
         "humanApprovalStrategy",
         "feasibilityAssessment",
         "environmentConstraints",
+        "diagram",
       ],
       properties: {
         name: { type: "string" },
@@ -209,6 +261,7 @@ const REPORT_SCHEMA = {
         humanApprovalStrategy: { type: "string" },
         feasibilityAssessment: { type: "string" },
         environmentConstraints: { type: "string" },
+        diagram: AGENT_DIAGRAM_SCHEMA,
       },
     },
     stillNeedsToKnow: { type: "array", items: { type: "string" } },
@@ -236,6 +289,32 @@ function extractOutputText(payload: unknown): string {
     }
   }
   return chunks.join("\n").trim();
+}
+
+/**
+ * The prompt forbids em dashes, but a model slip should never reach the UI.
+ * Rewrites "a — b" to "a, b" and a trailing "a—" to "a, ".
+ */
+function stripEmDashes<T>(value: T): T {
+  if (typeof value === "string") {
+    return value
+      .replace(/\s*[—–]\s*/g, ", ")
+      .replace(/,\s*,/g, ",")
+      .replace(/,\s*([.!?])/g, "$1")
+      .replace(/\s+,/g, ",")
+      .trim() as unknown as T;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => stripEmDashes(item)) as unknown as T;
+  }
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(value)) {
+      out[key] = stripEmDashes(item);
+    }
+    return out as unknown as T;
+  }
+  return value;
 }
 
 export async function POST(request: Request) {
@@ -267,18 +346,29 @@ export async function POST(request: Request) {
   const userPayload = {
     transcript,
     workflow,
+    sessionContext: {
+      format: "voice-first interview, 5 minute hard limit",
+      screenSharingUsed: Boolean(body.screenSharingUsed),
+      note: body.screenSharingUsed
+        ? "The user shared their screen for part of the call, so some steps were visually observed."
+        : "Voice only. No screen sharing, so nothing was visually observed. Mark workflow nodes as explained or inferred, never observed.",
+    },
     constraints: {
       brandAsPacific: true,
       maxAgentOpportunities: 3,
       forbidBasicProductivityTips: true,
       requireOutcomeOwningAgents: true,
-      diagramMustShowCurrentWorkflowOnly: true,
+      currentWorkflowDiagramShowsTodayOnly: true,
+      agentDiagramShowsProposedAutonomousWorkflow: true,
+      useRealApplicationNamesForLogos: true,
+      emptyApplicationRatherThanGuessedBrand: true,
       doNotInventIntegrations: true,
       markUnverifiedUnlessConfirmed: true,
       preferVercelWorkflowsForOrchestration: true,
       preferApisOrComposioWhenPossible: true,
       useBrowserAutomationWhenNeededForVerification: true,
       neverAssumeCloudCanAccessLocalhost: true,
+      noEmDashes: true,
     },
   };
 
@@ -331,7 +421,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const report = JSON.parse(text) as AutomationReport;
+    const report = stripEmDashes(JSON.parse(text) as AutomationReport);
     if (report.agentOpportunities?.length > 3) {
       report.agentOpportunities = report.agentOpportunities
         .slice()

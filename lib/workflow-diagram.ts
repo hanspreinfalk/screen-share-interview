@@ -6,31 +6,45 @@ import type { Edge, Node } from "@xyflow/react";
 import { MarkerType, Position } from "@xyflow/react";
 
 import type {
+  AgentDiagram,
+  AgentDiagramEdge,
+  AgentDiagramNode,
   EvidenceSource,
   WorkflowDiagramEdge,
   WorkflowDiagramNode,
   WorkflowModel,
 } from "@/lib/workflow-model";
 
+/** Union of both diagram vocabularies, so one node renderer serves both. */
+export type DiagramNodeKind =
+  | WorkflowDiagramNode["kind"]
+  | AgentDiagramNode["kind"];
+
 export type DiagramFlowNodeData = {
   label: string;
-  kind: WorkflowDiagramNode["kind"];
+  kind: DiagramNodeKind;
   kindLabel: string;
   application?: string;
-  source: EvidenceSource;
-  sourceLabel: string;
+  source?: EvidenceSource;
+  sourceLabel?: string;
 };
 
-const NODE_WIDTH = 196;
-const NODE_HEIGHT = 84;
+const NODE_WIDTH = 168;
+const NODE_HEIGHT = 78;
 
-const KIND_LABELS: Record<WorkflowDiagramNode["kind"], string> = {
+const KIND_LABELS: Record<DiagramNodeKind, string> = {
+  // Current workflow
   start: "Start",
   action: "Step",
   decision: "Question",
   loop: "Retry",
   end: "Done",
   handoff: "Handoff",
+  // Proposed agent workflow
+  trigger: "Trigger",
+  agent: "Agent",
+  verify: "Check",
+  human: "You",
 };
 
 const SOURCE_LABELS: Record<EvidenceSource, string> = {
@@ -39,12 +53,14 @@ const SOURCE_LABELS: Record<EvidenceSource, string> = {
   inferred: "Inferred",
 };
 
-function friendlyEdgeLabel(raw?: string, kind?: WorkflowDiagramEdge["kind"]) {
+function friendlyEdgeLabel(raw?: string, kind?: string) {
   const value = (raw || "").trim().toLowerCase();
   if (!value) {
     if (kind === "yes") return "Yes";
     if (kind === "no") return "No";
     if (kind === "loop") return "Try again";
+    if (kind === "retry") return "Retry";
+    if (kind === "escalate") return "Escalate";
     if (kind === "handoff") return "Hand off";
     return "";
   }
@@ -191,28 +207,79 @@ export function preferDiagram(
   return { nodes: [], edges: [] };
 }
 
-export function layoutDiagram(diagram: {
-  nodes: WorkflowDiagramNode[];
-  edges: WorkflowDiagramEdge[];
-}): {
+type GenericNode = {
+  id: string;
+  label: string;
+  kind: DiagramNodeKind;
+  application?: string;
+  source?: EvidenceSource;
+};
+
+type GenericEdge = {
+  id: string;
+  source: string;
+  target: string;
+  label?: string;
+  kind?: string;
+};
+
+export type LaidOutDiagram = {
   nodes: Node<DiagramFlowNodeData>[];
   edges: Edge[];
   bounds: { width: number; height: number };
+};
+
+/** Edge kinds drawn as a dashed, accented recovery path. */
+const RECOVERY_EDGE_KINDS = new Set(["loop", "no", "retry", "escalate"]);
+
+/** Normalises an agent diagram into the shared layout input. */
+export function prepareAgentDiagram(diagram?: AgentDiagram | null): {
+  nodes: GenericNode[];
+  edges: GenericEdge[];
 } {
+  if (!diagram?.nodes?.length) return { nodes: [], edges: [] };
+  return {
+    nodes: diagram.nodes.map((node: AgentDiagramNode) => ({
+      id: node.id,
+      label: node.label,
+      kind: node.kind,
+      application: node.application,
+    })),
+    edges: (diagram.edges ?? []).map((edge: AgentDiagramEdge) => ({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      label: edge.label,
+      kind: edge.kind,
+    })),
+  };
+}
+
+export function layoutDiagram(diagram: {
+  nodes: GenericNode[];
+  edges: GenericEdge[];
+}): LaidOutDiagram {
   const g = new dagreGraphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
   g.setGraph({
     rankdir: "LR",
-    nodesep: 44,
-    ranksep: 76,
-    marginx: 24,
-    marginy: 24,
+    nodesep: 34,
+    ranksep: 54,
+    marginx: 18,
+    marginy: 18,
   });
+
+  const known = new Set(diagram.nodes.map((n) => n.id));
 
   for (const node of diagram.nodes) {
     g.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
   }
-  for (const edge of diagram.edges) {
+  // Drop edges referencing ids the model never defined. Passing those to dagre
+  // creates phantom nodes at the origin and corrupts the layout.
+  const safeEdges = diagram.edges.filter(
+    (edge) => known.has(edge.source) && known.has(edge.target),
+  );
+  for (const edge of safeEdges) {
     g.setEdge(edge.source, edge.target);
   }
 
@@ -230,18 +297,18 @@ export function layoutDiagram(diagram: {
       data: {
         label: shortenLabel(node.label),
         kind: node.kind,
-        kindLabel: KIND_LABELS[node.kind],
+        kindLabel: KIND_LABELS[node.kind] ?? "Step",
         application: node.application || undefined,
         source: node.source,
-        sourceLabel: SOURCE_LABELS[node.source],
+        sourceLabel: node.source ? SOURCE_LABELS[node.source] : undefined,
       },
       sourcePosition: Position.Right,
       targetPosition: Position.Left,
     };
   });
 
-  const edges: Edge[] = diagram.edges.map((edge) => {
-    const isLoop = edge.kind === "loop" || edge.kind === "no";
+  const edges: Edge[] = safeEdges.map((edge) => {
+    const isLoop = RECOVERY_EDGE_KINDS.has(edge.kind ?? "");
     const label = friendlyEdgeLabel(edge.label, edge.kind);
     return {
       id: edge.id,

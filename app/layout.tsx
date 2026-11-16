@@ -1,24 +1,17 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Inter, Outfit } from "next/font/google";
+import { Geist_Mono, Libre_Baskerville } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const baskerville = Libre_Baskerville({
   subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-baskerville",
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
-});
-
-const outfit = Outfit({
-  subsets: ["latin"],
-  variable: "--font-display",
-  weight: ["300", "400", "500"],
 });
 
 export const metadata: Metadata = {
@@ -36,14 +29,14 @@ export default function RootLayout({
     <html
       lang="en"
       className={cn(
-        "h-full antialiased font-sans",
-        geistSans.variable,
+        "h-full antialiased",
+        baskerville.variable,
         geistMono.variable,
-        inter.variable,
-        outfit.variable,
       )}
     >
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col bg-white text-[#171719]">
+        {children}
+      </body>
     </html>
   );
 }

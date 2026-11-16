@@ -7,10 +7,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-baskerville), "Libre Baskerville", Baskerville, "Times New Roman", serif;
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
-  --font-display: var(--font-display), var(--font-sans);
+  --font-heading: var(--font-baskerville), "Libre Baskerville", Baskerville, "Times New Roman", serif;
+  --font-display: var(--font-baskerville), "Libre Baskerville", Baskerville, "Times New Roman", serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -126,13 +126,22 @@
     @apply bg-background text-foreground;
   }
   html {
-    @apply font-sans;
+    font-family: var(--font-baskerville), "Libre Baskerville", Baskerville,
+      "Times New Roman", serif;
+  }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+  button:disabled,
+  [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
   }
 }
 
-/* Wonderful-inspired surface shared by the live interview and the report */
+/* Shared surface for the live interview and the report */
 .pacific-surface {
-  --pr-bg: #f6f6f4;
+  --pr-bg: #ffffff;
   --pr-ink: #171719;
   --pr-muted: #6e6e6e;
   --pr-soft: #393939;
@@ -142,20 +151,25 @@
   --pr-line-soft: rgba(23, 23, 25, 0.055);
   background: var(--pr-bg);
   color: var(--pr-ink);
+  font-family: var(--font-baskerville), "Libre Baskerville", Baskerville,
+    "Times New Roman", serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
 .pacific-surface .pr-display {
-  font-family: var(--font-display), var(--font-sans), sans-serif;
-  font-weight: 300;
-  letter-spacing: -0.035em;
-  line-height: 1.04;
+  font-family: var(--font-baskerville), "Libre Baskerville", Baskerville,
+    "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.08;
   text-wrap: balance;
 }
 
 .pacific-surface .pr-body {
-  letter-spacing: -0.015em;
+  font-family: var(--font-baskerville), "Libre Baskerville", Baskerville,
+    "Times New Roman", serif;
+  letter-spacing: -0.01em;
 }
 
 /* Small uppercase label used for eyebrows / field titles */
@@ -314,76 +328,147 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Live interview
-   Reuses the report's tokens so the two phases feel like one product.
+   Idle lobby
    --------------------------------------------------------------------------- */
 
-/* Breathing halo behind the voice orb while Pacific listens */
-.pacific-surface .pr-orb-halo {
-  animation: pr-breathe 3.4s ease-in-out infinite;
+.pacific-surface .pr-lobby {
+  background:
+    radial-gradient(ellipse 70% 45% at 50% 18%, rgba(23, 23, 25, 0.035), transparent 70%),
+    linear-gradient(180deg, #ffffff 0%, #fafafa 100%);
 }
 
-/* Faster, stronger pulse while Pacific speaks */
-.pacific-surface .pr-orb-halo-active {
-  animation: pr-pulse 1.5s ease-in-out infinite;
+.pacific-surface .pr-lobby::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    rgba(23, 23, 25, 0.025) 1px,
+    transparent 1px
+  );
+  background-size: 100% 28px;
+  mask-image: linear-gradient(180deg, transparent, #000 18%, #000 78%, transparent);
+  opacity: 0.35;
 }
 
-@keyframes pr-breathe {
+/* ---------------------------------------------------------------------------
+   Live call presence: soft sound waves
+   --------------------------------------------------------------------------- */
+
+.pacific-surface .pr-wave-bar {
+  display: block;
+  width: 5px;
+  height: calc(18px + 42px * var(--pr-wave-amp, 0.5));
+  border-radius: 9999px;
+  background: #171719;
+  transform-origin: center;
+  transition:
+    height 70ms linear,
+    opacity 200ms ease,
+    background-color 320ms ease;
+}
+
+.pacific-surface .pr-wave-live .pr-wave-bar {
+  animation: none;
+  opacity: 0.92;
+}
+
+.pacific-surface .pr-wave-listening .pr-wave-bar {
+  animation: pr-wave-breathe 2.8s ease-in-out infinite;
+  animation-delay: var(--pr-wave-delay, 0ms);
+}
+
+.pacific-surface .pr-wave-speaking .pr-wave-bar {
+  animation: pr-wave-speak 0.95s ease-in-out infinite;
+  animation-delay: var(--pr-wave-delay, 0ms);
+}
+
+.pacific-surface .pr-wave-thinking .pr-wave-bar {
+  animation: pr-wave-think 1.6s ease-in-out infinite;
+  animation-delay: var(--pr-wave-delay, 0ms);
+  opacity: 0.72;
+}
+
+.pacific-surface .pr-wave-connecting .pr-wave-bar {
+  animation: pr-wave-breathe 1.5s ease-in-out infinite;
+  animation-delay: var(--pr-wave-delay, 0ms);
+  opacity: 0.55;
+}
+
+.pacific-surface .pr-wave-quiet .pr-wave-bar {
+  height: 10px;
+  opacity: 0.28;
+  animation: none;
+}
+
+.pacific-surface .pr-wave:not(.pr-wave-speaking):not(.pr-wave-thinking):not(.pr-wave-listening):not(.pr-wave-connecting):not(.pr-wave-quiet)
+  .pr-wave-bar {
+  animation: pr-wave-breathe 3.6s ease-in-out infinite;
+  animation-delay: var(--pr-wave-delay, 0ms);
+  opacity: 0.55;
+}
+
+@keyframes pr-wave-breathe {
   0%,
   100% {
-    transform: scale(1);
-    opacity: 0.4;
+    transform: scaleY(0.45);
+    opacity: 0.45;
   }
   50% {
-    transform: scale(1.12);
-    opacity: 0.68;
+    transform: scaleY(calc(0.7 + 0.3 * var(--pr-wave-amp, 0.5)));
+    opacity: 0.85;
   }
 }
 
-@keyframes pr-pulse {
-  0%,
-  100% {
-    transform: scale(1.02);
-    opacity: 0.55;
-  }
-  50% {
-    transform: scale(1.3);
-    opacity: 0.9;
-  }
-}
-
-/* Three-bar equalizer shown while Pacific speaks */
-.pacific-surface .pr-eq-bar {
-  animation: pr-eq 900ms ease-in-out infinite;
-}
-
-@keyframes pr-eq {
+@keyframes pr-wave-speak {
   0%,
   100% {
     transform: scaleY(0.35);
   }
-  50% {
-    transform: scaleY(1);
+  40% {
+    transform: scaleY(calc(0.85 + 0.35 * var(--pr-wave-amp, 0.5)));
+  }
+  70% {
+    transform: scaleY(calc(0.55 + 0.25 * var(--pr-wave-amp, 0.5)));
   }
 }
 
-/* Contextual share-screen prompt and time warnings */
-.pacific-surface .pr-rise {
-  animation: pr-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+@keyframes pr-wave-think {
+  0%,
+  100% {
+    transform: scaleY(0.3);
+    opacity: 0.35;
+  }
+  50% {
+    transform: scaleY(calc(0.55 + 0.2 * var(--pr-wave-amp, 0.5)));
+    opacity: 0.8;
+  }
 }
 
-@keyframes pr-rise {
+.pacific-surface .pr-stage {
+  animation: pr-stage-in 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes pr-stage-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(12px) scale(0.985);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
-/* Newly arrived transcript lines */
+/* Animate opacity on the inner node only — never transform on RF wrappers. */
+.pacific-surface .pr-diagram-node {
+  animation: pr-fade-in 280ms ease both;
+}
+
+.pacific-surface .pr-rise {
+  animation: pr-stage-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 .pacific-surface .pr-fade-in {
   animation: pr-fade-in 320ms ease both;
 }
@@ -395,12 +480,6 @@
   to {
     opacity: 1;
   }
-}
-
-/* Transcript fades out at the top edge instead of hard-clipping */
-.pacific-surface .pr-transcript-mask {
-  mask-image: linear-gradient(to bottom, transparent, #000 2.25rem);
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 2.25rem);
 }
 
 @media (prefers-reduced-motion: reduce) {

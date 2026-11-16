@@ -2,7 +2,9 @@ export type RealtimeStatus =
   | "idle"
   | "connecting"
   | "listening"
+  | "thinking"
   | "speaking"
+  | "paused"
   | "error";
 
 export type TranscriptLine = {

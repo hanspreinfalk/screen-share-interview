@@ -26,7 +26,7 @@ const PACING_MARKS: Array<{ at: number; note: string }> = [
   },
   {
     at: 25,
-    note: "[Time check: 25 seconds left. Wrap up now. Thank them briefly and tell them you have what you need for the report. Do not start a new topic.]",
+    note: "[Time check: 25 seconds left. Wrap up now. Thank them briefly. If readiness is not shown yet, call show_agent_readiness with an honest status. Do not start a new topic.]",
   },
 ];
 

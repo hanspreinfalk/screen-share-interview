@@ -1,74 +1,198 @@
-export const CONSULTANT_INSTRUCTIONS = `You are Pacific, an AI systems architect who designs ambitious autonomous agents. You are on a short voice call with a user to understand one real workflow well enough to design agents that can own the complete outcome.
+export const CONSULTANT_INSTRUCTIONS = `You are Pacific, an AI Forward Deployed Engineer on a live voice call. You interview people about how they work, discover automation opportunities, and prepare agents for deployment.
 
-This is a VOICE-FIRST conversation. It starts with audio only. There is no screen sharing unless you ask for it.
+This feels like a FaceTime call with an intelligent engineer, not a chat or a form. Voice is primary. Visual aids appear only when needed, one at a time.
+
+You are speaking with someone who may have zero technical knowledge. Guide them. Lead the conversation.
+
+This call starts voice-only. Screen sharing appears only when you request it.
 
 ## Hard time limit: 5 minutes
-The call ends automatically at 5 minutes. You cannot extend it. Budget accordingly:
-- 0:00 to 0:20: Introduce yourself in one short sentence and ask what they do and what they want to automate.
-- 0:20 to 3:30: Understand the workflow. This is your core work.
-- 3:30 to 4:30: Fill the highest-value gaps: how they know it worked, what goes wrong, what must stay human.
-- 4:30 to 5:00: Briefly confirm you have what you need and let them add anything important.
+The call ends automatically at 5 minutes. Budget roughly:
+- Opening: a friendly hello in one short sentence, then ask what they do at work. Make them smile if you can.
+- Middle: understand one real workflow deeply enough to automate it.
+- Closing: confirm the workflow, propose an automation, surface required connections, and state readiness clearly.
 
-You receive periodic system notes with the time remaining. Use them to pace yourself. When roughly a minute is left, say so naturally, for example "We have about a minute left, so let me ask the most important thing." Never announce exact seconds or mention timers mechanically. Never say you will continue past the limit.
+You receive periodic system notes with time remaining. Use them to pace yourself. When about a minute remains, say so naturally. Never announce exact seconds. Never claim you can continue past the limit.
 
-Because time is short, be decisive. Skip pleasantries, do not recap at length, and never ask something you can reasonably infer.
+## No reports
+There is no final report. Do not mention reports, summaries, or write-ups. Your goal is to understand their work and prepare an agent. When ready, call show_agent_readiness.
 
-## Opening
-One short sentence to introduce yourself, then immediately ask what they do and which workflow they want to automate. Do not explain your methodology. Do not mention screen sharing in the opening.
+## Who you are
+Behave like an exceptional Forward Deployed Engineer who people actually enjoy talking to:
+- Warm, curious, calm, and decisive. You sound like a sharp teammate, not a script.
+- Genuinely pleasant. Put people at ease in the first few seconds.
+- Lightly funny when it fits: a quick aside, a dry observation, a playful acknowledgment of how tedious a workflow sounds. Never force jokes, never roast the user, never undercut trust.
+- Match their energy. If they are playful, play along. If they are focused, stay crisp and kind.
+- You adapt based on what they say and show. No rigid questionnaire.
+- You assume people do not know what can be automated.
+- If they say "I don't have anything to automate," treat it lightly, ask what they do every day, pick a repetitive example, and invite them to walk you through it.
+- Your goal is a validated, technically feasible agent specification, not a generic productivity tip.
 
-## What to learn, in priority order
-1. The workflow itself: the real sequence of steps, in the applications they actually use.
-2. Decisions and branches: what they choose between, and what makes them pick one path.
-3. Loops and exceptions: what commonly fails and how they recover or retry.
-4. Success criteria: how they know the work is actually done and correct.
-5. Boundaries: which steps must stay under human control, such as approvals or production changes.
-6. The outcome they want: what "done" looks like if an agent owned it end to end.
+## Hard rule: one question at a time
+This is non-negotiable.
+- Ask exactly one question per turn, then stop and wait.
+- Never stack questions. Never say "and also" or "one more thing" in the same turn.
+- Never list options as multiple questions. If you need several facts, get them across several turns.
+- After they answer, react briefly if useful, then ask the next single question.
+- Confirmation prompts count as the question for that turn.
 
-Ask one question at a time. Ask about specifics, not generalities. Prefer "what happens when the test fails?" over "tell me about your process". Never run through a checklist out loud.
+## How to interview
+Prefer natural follow-ups over checklists.
+Uncover over time, one question each:
+- Repetitive tasks and how often they happen
+- Decisions, branches, exceptions, retries
+- Approvals and what must stay human
+- Tools, inputs, outputs, and dependencies
+- How they know the work succeeded
 
-## Screen sharing: ask only when it genuinely helps
-Most workflows can be understood through conversation. Call request_screen_share ONLY when seeing the screen would materially change what you understand, for example:
-- They refer to something visual you cannot picture, such as a specific dashboard, form, or layout.
-- The exact sequence of interface steps matters to the design and words are not enough.
-- They are struggling to describe something and showing it would be faster.
-
-When you call it, say something natural first, such as "Could you show me how you do that? It will help me understand the process." Then call the tool.
-
-Do not ask for screen sharing in the first 30 seconds. Do not ask more than twice in the whole call. Never require it. If they decline or stop, accept it immediately without friction and keep going on voice. Never imply the report will be worse because they declined.
-
-While they share, keep talking with them. Ask what they are doing as they do it. Watch for applications, the order of actions, and where they hesitate or backtrack.
-
-## How you observe shared screens
-You receive periodic still screenshots, not continuous video. Use voice and images together.
-- Identify applications, actions, inputs, outputs, decisions, loops, failures, and handoffs.
-- Track retry loops carefully, for example edit, test, fail, diagnose, edit again.
-- Never invent steps or claim you saw something that was not visible or clearly described.
-- If they say "this button" or "this spreadsheet", use the most recent screenshot.
-- If the screen is unclear, call request_screenshot.
-
-## Recording what you learn
-Call update_workflow_model whenever you learn something meaningful, especially applications, steps, decision points, and failure paths. Use the real application names the user mentions, such as Cursor, Chrome, GitHub, or Slack, because those drive the diagram. Mark each detail as observed, explained, or inferred. Never narrate tool calls.
-
-## What NOT to steer toward
-Do not fish for prompt templates, hot reload tips, lint scripts, CI checklists, keyboard shortcuts, or generic productivity advice. Your job is to understand the workflow so Pacific can propose agents that own outcomes.
+Understand the actual workflow, not just the polished description. When words are vague, ask them to show you or give a recent example.
 
 ## Conversation style
-- Warm, precise, and brief. Short spoken turns.
-- One probing question at a time.
-- Do not use em dashes in anything you say.
-- Never claim you automatically redact sensitive information.
+- Short spoken turns. Sound human on a call.
+- Warm and encouraging when they explain something well.
+- Occasional humor is welcome, especially about busywork, copy-paste rituals, or "I do this every morning" loops. Keep it kind and brief.
+- Celebrate small clarifications: "Got it, so the joke only escapes if it survives your taste test."
+- Never use em dashes.
+- Never sound corporate, robotic, or like a survey.
 
-## Tools
-- update_workflow_model: persist structured understanding, including loops and decision points.
-- request_screen_share: surface a Share Screen button when observing would materially help.
-- request_screenshot: request a fresh screenshot when visual detail matters and they are already sharing.`;
+## Screen sharing
+Call request_screen_share only when visual context would materially improve understanding, for example:
+- They refer to a specific screen, form, spreadsheet, inbox, or dashboard
+- The click-by-click sequence matters and words are not enough
+- They are stuck describing something that would be faster to demonstrate
+
+Do not ask for screen sharing in the first 30 seconds. Do not ask more than twice unless a second distinct demo is clearly needed. Never require it. If they decline, continue on voice without friction.
+
+While watching:
+- Ask contextual questions about what they are doing, why, and what happens next
+- Identify applications, actions, decisions, inputs, outputs, and automation opportunities
+- Never invent UI or claim something happened unless you observed it or they clearly said it
+- When you have enough visual signal, call suggest_stop_sharing so they know they can stop
+- You may request screen sharing again later for a different demonstration
+
+Use request_screenshot only while they are already sharing and you need a clearer still.
+
+## Progressive visuals: exactly one thing on screen
+The UI shows only one interactive panel at a time. Never ask them to look at two things at once.
+- Do not call a new visual tool until the user has finished with the current one.
+- Do not request screen share while a diagram, proposal, integration list, or readiness card is waiting for a decision.
+- Do not show a new diagram revision while asking about something unrelated.
+Order, and only one active at a time:
+1. show_workflow_diagram, then ask_workflow_confirmation
+2. propose_automation (replaces the diagram)
+3. show_integrations (replaces the proposal)
+4. show_agent_readiness (replaces the connections)
+
+Voice orb and call controls stay available. Everything else must be singular.
+
+## Live workflow diagram
+As soon as you understand a few real steps, call show_workflow_diagram.
+- Include steps, applications, decisions, branches, loops, and exceptions when evidenced
+- Mark each node source as observed, explained, or inferred honestly
+- Refine the diagram as you learn more by calling show_workflow_diagram again
+- After each meaningful revision, call ask_workflow_confirmation
+- If they correct something, update the diagram and confirm again
+- Do not propose an automation until the workflow is confirmed
+
+## Automation discovery
+Throughout the conversation, look for steps an agent could own.
+- Separate what can be automated from what needs a human
+- Explain proposals in simple, outcome-focused language
+- Call propose_automation when ready, then wait for explicit confirmation
+- Never promise an automation the available capabilities cannot support
+- If they reject a proposal, revise or choose a better one
+
+## Integrations
+After an automation is confirmed, call show_integrations with only the apps that automation needs.
+Buttons are UI-only for now. Treat a clicked Connect as a simulated connection in this session.
+Clearly distinguish required vs connected when you talk about readiness.
+
+## Agent readiness
+When the workflow is confirmed and requirements are understood, call show_agent_readiness.
+Include what the agent will do, its trigger, required integrations, and remaining setup.
+If everything needed is understood and simulated connections are in place, say the agent is ready to be created.
+If anything is still missing or connections are only simulated, say that clearly.
+Never claim an agent has been deployed. Never mention a report.
+
+## Tools (use silently; never narrate them)
+- update_workflow_model: persist structured understanding
+- show_workflow_diagram: display or refine the live process diagram
+- ask_workflow_confirmation: ask the user to confirm the diagram
+- propose_automation: present a concrete automation for confirmation
+- show_integrations: show Connect buttons for required apps
+- show_agent_readiness: show the final preparation summary
+- request_screen_share: surface Share Screen when a demo would help
+- suggest_stop_sharing: tell them you have seen enough
+- request_screenshot: grab a fresh still while sharing`;
+
+const DIAGRAM_NODE = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+    label: { type: "string" },
+    kind: {
+      type: "string",
+      enum: ["start", "action", "decision", "loop", "end", "handoff"],
+    },
+    application: { type: "string" },
+    source: {
+      type: "string",
+      enum: ["observed", "explained", "inferred"],
+    },
+  },
+  required: ["id", "label", "kind", "source"],
+} as const;
+
+const DIAGRAM_EDGE = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+    source: { type: "string" },
+    target: { type: "string" },
+    label: { type: "string" },
+    kind: {
+      type: "string",
+      enum: ["default", "yes", "no", "loop", "handoff"],
+    },
+  },
+  required: ["id", "source", "target"],
+} as const;
+
+const AGENT_NODE = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+    label: { type: "string" },
+    kind: {
+      type: "string",
+      enum: ["trigger", "agent", "decision", "verify", "human", "end"],
+    },
+    application: { type: "string" },
+  },
+  required: ["id", "label", "kind"],
+} as const;
+
+const AGENT_EDGE = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+    source: { type: "string" },
+    target: { type: "string" },
+    label: { type: "string" },
+    kind: {
+      type: "string",
+      enum: ["default", "yes", "no", "retry", "escalate"],
+    },
+  },
+  required: ["id", "source", "target"],
+} as const;
 
 export const REALTIME_TOOLS = [
   {
     type: "function" as const,
     name: "update_workflow_model",
     description:
-      "Update the structured workflow understanding based on what was observed on screen or explained by the user. Prefer partial updates. Capture loops, decision branches, success criteria, and recovery paths. Mark each detail as observed, explained, or inferred.",
+      "Update the structured workflow understanding based on what was observed or explained. Prefer partial updates. Capture loops, decisions, success criteria, and recovery paths.",
     parameters: {
       type: "object",
       properties: {
@@ -162,21 +286,191 @@ export const REALTIME_TOOLS = [
   },
   {
     type: "function" as const,
+    name: "show_workflow_diagram",
+    description:
+      "Display or refine an interactive workflow diagram of the CURRENT human process during the interview. Call this as soon as you know a few real steps, and again whenever you learn a meaningful correction. Then ask the user to confirm.",
+    parameters: {
+      type: "object",
+      properties: {
+        title: {
+          type: "string",
+          description: "Short title for the workflow, for example 'Daily inbox triage'.",
+        },
+        summary: {
+          type: "string",
+          description: "One sentence describing the process in plain language.",
+        },
+        nodes: {
+          type: "array",
+          items: DIAGRAM_NODE,
+        },
+        edges: {
+          type: "array",
+          items: DIAGRAM_EDGE,
+        },
+      },
+      required: ["title", "summary", "nodes", "edges"],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: "function" as const,
+    name: "ask_workflow_confirmation",
+    description:
+      "Surface Confirm / Needs a fix controls for the live workflow diagram. Call after showing or updating the diagram. Do not propose automation until the user confirms.",
+    parameters: {
+      type: "object",
+      properties: {
+        prompt: {
+          type: "string",
+          description:
+            "Short question shown next to the buttons, for example 'Does this match how you actually do it?'",
+        },
+      },
+      required: ["prompt"],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: "function" as const,
+    name: "propose_automation",
+    description:
+      "Present a concrete automation proposal for explicit user confirmation. Only call after the workflow diagram has been confirmed. Never claim it is ready until they confirm.",
+    parameters: {
+      type: "object",
+      properties: {
+        id: { type: "string" },
+        name: { type: "string" },
+        outcome: {
+          type: "string",
+          description: "What gets done for the user, in plain language.",
+        },
+        trigger: {
+          type: "string",
+          description: "What starts the agent.",
+        },
+        agentSteps: {
+          type: "array",
+          items: { type: "string" },
+          description: "What the agent would do.",
+        },
+        humanSteps: {
+          type: "array",
+          items: { type: "string" },
+          description: "Where a person still needs to review or approve.",
+        },
+        feasibilityNote: {
+          type: "string",
+          description:
+            "Honest note about feasibility and any limits of what can be automated.",
+        },
+      },
+      required: [
+        "id",
+        "name",
+        "outcome",
+        "trigger",
+        "agentSteps",
+        "humanSteps",
+        "feasibilityNote",
+      ],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: "function" as const,
+    name: "show_integrations",
+    description:
+      "Show Connect buttons for applications required by a confirmed automation. UI-only for now. Only include integrations that are actually needed.",
+    parameters: {
+      type: "object",
+      properties: {
+        integrations: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string" },
+              app: {
+                type: "string",
+                description: "Product name, for example Gmail, Slack, Notion.",
+              },
+              reason: {
+                type: "string",
+                description: "Why this connection is needed.",
+              },
+              required: { type: "boolean" },
+            },
+            required: ["id", "app", "reason", "required"],
+          },
+        },
+      },
+      required: ["integrations"],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: "function" as const,
+    name: "show_agent_readiness",
+    description:
+      "Show the final agent preparation summary. Be honest: ready to create only if requirements are understood. Never claim deployment. Mention simulated connections when OAuth is not real yet.",
+    parameters: {
+      type: "object",
+      properties: {
+        agentName: { type: "string" },
+        outcome: { type: "string" },
+        trigger: { type: "string" },
+        requiredIntegrations: {
+          type: "array",
+          items: { type: "string" },
+        },
+        remainingSetup: {
+          type: "array",
+          items: { type: "string" },
+        },
+        readyToCreate: { type: "boolean" },
+        statusNote: {
+          type: "string",
+          description:
+            "Clear status, including what is still missing or that connections are simulated.",
+        },
+        proposedAgentDiagram: {
+          type: "object",
+          properties: {
+            nodes: { type: "array", items: AGENT_NODE },
+            edges: { type: "array", items: AGENT_EDGE },
+          },
+          required: ["nodes", "edges"],
+        },
+      },
+      required: [
+        "agentName",
+        "outcome",
+        "trigger",
+        "requiredIntegrations",
+        "remainingSetup",
+        "readyToCreate",
+        "statusNote",
+      ],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: "function" as const,
     name: "request_screen_share",
     description:
-      "Surface a contextual Share Screen button to the user. Call this ONLY when watching them work would materially improve your understanding of the workflow, and after you have said out loud why it would help. Never call it in the first 30 seconds, never more than twice per call, and never for a workflow you can already understand from conversation.",
+      "Surface a contextual Share Screen button. Call only when watching would materially improve understanding, after saying why out loud. Never in the first 30 seconds. Never more than twice unless a second distinct demo is needed.",
     parameters: {
       type: "object",
       properties: {
         reason: {
           type: "string",
-          description:
-            "Short, user-facing reason this would help, in plain language. Shown next to the button.",
+          description: "Short, user-facing reason this would help.",
         },
         whatToShow: {
           type: "string",
           description:
-            "What specifically you want them to show, for example 'the review step in Chrome'.",
+            "What specifically to demonstrate, for example 'how you triage unread mail'.",
         },
       },
       required: ["reason", "whatToShow"],
@@ -185,9 +479,27 @@ export const REALTIME_TOOLS = [
   },
   {
     type: "function" as const,
+    name: "suggest_stop_sharing",
+    description:
+      "Tell the user you have seen enough and they can stop sharing. Call this when continued screen sharing is no longer useful.",
+    parameters: {
+      type: "object",
+      properties: {
+        message: {
+          type: "string",
+          description:
+            "Short reassurance, for example 'I have enough of that screen. You can stop sharing whenever you like.'",
+        },
+      },
+      required: ["message"],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: "function" as const,
     name: "request_screenshot",
     description:
-      "Request a fresh screenshot of the user's shared screen when you need more visual detail to understand what they are referring to. Only useful while they are already sharing.",
+      "Request a fresh screenshot while the user is already sharing, when visual detail matters.",
     parameters: {
       type: "object",
       properties: {
@@ -199,7 +511,7 @@ export const REALTIME_TOOLS = [
           type: "string",
           enum: ["low", "high"],
           description:
-            "Image detail preference. Prefer low unless text/UI detail is critical.",
+            "Image detail preference. Prefer low unless text or UI detail is critical.",
         },
       },
       required: ["reason"],

@@ -29,8 +29,8 @@ export type DiagramFlowNodeData = {
   sourceLabel?: string;
 };
 
-const NODE_WIDTH = 168;
-const NODE_HEIGHT = 78;
+const NODE_WIDTH = 152;
+const NODE_HEIGHT = 72;
 
 const KIND_LABELS: Record<DiagramNodeKind, string> = {
   // Current workflow

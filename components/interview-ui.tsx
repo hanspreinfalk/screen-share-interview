@@ -1,102 +1,117 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
+import {
+  CaretLeft,
+  CaretRight,
+  Microphone,
+  MicrophoneSlash,
+  Pause,
+  PhoneDisconnect,
+  Play,
+} from "@phosphor-icons/react";
 
 import { AppLogo } from "@/components/app-logo";
+import { WorkflowDiagram } from "@/components/workflow-diagram";
+import type {
+  AgentReadiness,
+  AutomationProposal,
+  IntegrationRequirement,
+  LiveWorkflowDiagram,
+} from "@/lib/interview-artifacts";
+import type { TranscriptLine } from "@/lib/session-types";
 import { formatClock, SESSION_LIMIT_SECONDS } from "@/lib/use-session-clock";
 import { cn } from "@/lib/utils";
-import type { TranscriptLine } from "@/lib/session-types";
 
-export type VoiceState = "connecting" | "listening" | "speaking" | "muted" | "idle";
+export type VoiceState =
+  | "connecting"
+  | "listening"
+  | "thinking"
+  | "speaking"
+  | "muted"
+  | "paused"
+  | "idle";
+
+const IDLE_WAVE = [0.35, 0.55, 0.8, 1, 0.72, 1, 0.8, 0.55, 0.35] as const;
 
 /**
- * The primary focus of the live screen: shows whether Pacific is listening,
- * speaking, or connecting.
+ * Sound-wave presence for the live call. When `levels` are provided they
+ * come from real mic / AI audio. Otherwise idle CSS motion is used.
  */
-export function VoiceOrb({ state }: { state: VoiceState }) {
+export function VoiceOrb({
+  state,
+  levels,
+}: {
+  state: VoiceState;
+  levels?: number[];
+}) {
+  const live = Boolean(levels?.length);
   const speaking = state === "speaking";
+  const thinking = state === "thinking";
   const listening = state === "listening";
   const connecting = state === "connecting";
   const muted = state === "muted";
+  const paused = state === "paused";
+  const bars = levels?.length ? levels : [...IDLE_WAVE];
 
   return (
-    <div className="relative flex size-[132px] items-center justify-center">
-      <span
-        aria-hidden
-        className={cn(
-          "absolute inset-0 rounded-full",
-          speaking
-            ? "pr-orb-halo-active bg-[radial-gradient(circle,rgba(17,17,19,0.16),transparent_70%)]"
-            : listening
-              ? "pr-orb-halo bg-[radial-gradient(circle,rgba(17,17,19,0.1),transparent_70%)]"
-              : "bg-[radial-gradient(circle,rgba(17,17,19,0.05),transparent_70%)]",
-        )}
-      />
-      <span
-        aria-hidden
-        className={cn(
-          "absolute rounded-full border transition-all duration-700",
-          speaking
-            ? "size-[104px] border-[rgba(17,17,19,0.16)]"
-            : "size-[92px] border-[rgba(17,17,19,0.09)]",
-        )}
-      />
-      <div
-        className={cn(
-          "relative flex size-[68px] items-center justify-center rounded-full transition-transform duration-500",
-          "bg-[var(--pr-dark)] shadow-[0_18px_40px_-20px_rgba(17,17,19,0.6)]",
-          speaking && "scale-[1.06]",
-          muted && "opacity-45",
-        )}
-      >
-        {speaking ? (
-          <span aria-hidden className="flex items-end gap-[3px]">
-            {[0, 1, 2].map((i) => (
-              <span
-                key={i}
-                className="pr-eq-bar w-[3px] origin-bottom rounded-full bg-[var(--pr-cream)]"
-                style={{ height: 18, animationDelay: `${i * 150}ms` }}
-              />
-            ))}
-          </span>
-        ) : connecting ? (
-          <span
-            aria-hidden
-            className="size-4 animate-spin rounded-full border-2 border-white/25 border-t-white/90"
-          />
-        ) : muted ? (
-          <MicOffGlyph />
-        ) : (
-          <span aria-hidden className="size-2.5 rounded-full bg-[var(--pr-cream)]" />
-        )}
-      </div>
+    <div
+      className={cn(
+        "pr-wave relative flex h-[120px] w-[220px] items-center justify-center gap-[5px]",
+        live && "pr-wave-live",
+        !live && speaking && "pr-wave-speaking",
+        !live && thinking && "pr-wave-thinking",
+        !live && listening && "pr-wave-listening",
+        !live && connecting && "pr-wave-connecting",
+        (muted || paused) && "pr-wave-quiet",
+      )}
+      aria-hidden
+    >
+      {bars.map((amp, index) => (
+        <span
+          key={index}
+          className="pr-wave-bar"
+          style={
+            {
+              "--pr-wave-amp": Math.max(0.06, Math.min(1, amp)),
+              "--pr-wave-delay": `${index * 70}ms`,
+              height: live
+                ? `${Math.round(10 + Math.max(0.06, Math.min(1, amp)) * 70)}px`
+                : undefined,
+            } as CSSProperties
+          }
+        />
+      ))}
     </div>
   );
 }
 
-function MicOffGlyph() {
+export function CallStatusLabel({ state }: { state: VoiceState }) {
+  const label =
+    state === "connecting"
+      ? "Connecting"
+      : state === "speaking"
+        ? "Pacific is speaking"
+        : state === "thinking"
+          ? "Pacific is thinking"
+          : state === "paused"
+            ? "Call paused"
+            : state === "muted"
+              ? "You are muted"
+              : state === "listening"
+                ? "Listening"
+                : "Ready";
+
   return (
-    <svg
-      viewBox="0 0 24 24"
-      className="size-5"
-      fill="none"
-      stroke="var(--pr-cream)"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      aria-hidden
+    <p
+      className="pr-body text-[15px] tracking-[-0.01em] text-[var(--pr-soft)]"
+      aria-live="polite"
     >
-      <path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3 3 3 0 0 1-3-3V5a3 3 0 0 1 3-3Z" />
-      <path d="M5 11a7 7 0 0 0 14 0" />
-      <path d="M12 18v3" />
-      <path d="M3 3l18 18" />
-    </svg>
+      {label}
+    </p>
   );
 }
 
-/**
- * Subtle countdown. A thin ring drains over the 5 minutes and the label turns
- * amber in the final minute, so time pressure is felt without a loud timer.
- */
 export function Countdown({
   remaining,
   isFinalMinute,
@@ -151,10 +166,85 @@ export function Countdown({
   );
 }
 
-/**
- * Contextual Share Screen call to action, raised by Pacific's
- * request_screen_share action. Declining is a first-class choice.
- */
+/** FaceTime-style call controls kept available throughout the live call. */
+export function CallControls({
+  muted,
+  paused,
+  onToggleMute,
+  onTogglePause,
+  onEnd,
+}: {
+  muted: boolean;
+  paused: boolean;
+  onToggleMute: () => void;
+  onTogglePause: () => void;
+  onEnd: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-center gap-3">
+      <ControlButton
+        label={muted ? "Unmute" : "Mute"}
+        active={muted}
+        onClick={onToggleMute}
+      >
+        {muted ? (
+          <MicrophoneSlash size={22} weight="regular" />
+        ) : (
+          <Microphone size={22} weight="regular" />
+        )}
+      </ControlButton>
+      <ControlButton
+        label={paused ? "Resume" : "Pause"}
+        active={paused}
+        onClick={onTogglePause}
+      >
+        {paused ? (
+          <Play size={22} weight="fill" />
+        ) : (
+          <Pause size={22} weight="fill" />
+        )}
+      </ControlButton>
+      <button
+        type="button"
+        onClick={onEnd}
+        aria-label="End call"
+        className="flex size-14 items-center justify-center rounded-full bg-[#e4573d] text-white shadow-[0_12px_28px_-14px_rgba(228,87,61,0.8)] transition hover:bg-[#d44930]"
+      >
+        <PhoneDisconnect size={22} weight="fill" />
+      </button>
+    </div>
+  );
+}
+
+function ControlButton({
+  label,
+  active,
+  onClick,
+  children,
+}: {
+  label: string;
+  active?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      aria-pressed={active}
+      className={cn(
+        "flex size-14 flex-col items-center justify-center rounded-full border transition",
+        active
+          ? "border-[rgba(23,23,25,0.18)] bg-[var(--pr-dark)] text-[var(--pr-cream)]"
+          : "border-[var(--pr-line)] bg-white text-[var(--pr-ink)] hover:border-[rgba(23,23,25,0.16)]",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
 export function ScreenSharePrompt({
   reason,
   whatToShow,
@@ -169,7 +259,7 @@ export function ScreenSharePrompt({
   pending: boolean;
 }) {
   return (
-    <div className="pr-rise pr-card w-full max-w-xl p-5">
+    <div className="pr-stage pr-card w-full max-w-xl p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 space-y-1">
           <p className="pr-label">Pacific asked to watch</p>
@@ -204,7 +294,6 @@ export function ScreenSharePrompt({
   );
 }
 
-/** Compact live preview, rendered only while sharing is active. */
 export function SharePreview({
   videoRef,
   paused,
@@ -217,7 +306,7 @@ export function SharePreview({
   onStop: () => void;
 }) {
   return (
-    <div className="pr-rise pr-card w-full max-w-sm overflow-hidden">
+    <div className="pr-stage pr-card w-full max-w-sm overflow-hidden">
       <div className="relative aspect-video w-full bg-[#0d0d0f]">
         <video
           ref={videoRef}
@@ -260,9 +349,306 @@ export function SharePreview({
   );
 }
 
+export function StopShareHint({
+  message,
+  onStop,
+}: {
+  message: string;
+  onStop: () => void;
+}) {
+  return (
+    <div className="pr-stage pr-card flex w-full max-w-xl items-center justify-between gap-4 p-4">
+      <p className="pr-body text-[13.5px] leading-6 text-[var(--pr-soft)]">
+        {message}
+      </p>
+      <button
+        type="button"
+        onClick={onStop}
+        className="pr-pill shrink-0 !bg-[var(--pr-dark)] !text-[var(--pr-cream)] hover:!bg-[#1d1d20]"
+      >
+        Stop sharing
+      </button>
+    </div>
+  );
+}
+
+export function LiveWorkflowPanel({
+  diagram,
+  onConfirm,
+  onNeedsFix,
+}: {
+  diagram: LiveWorkflowDiagram;
+  onConfirm: () => void;
+  onNeedsFix: () => void;
+}) {
+  const awaiting =
+    diagram.confirmation === "pending" && Boolean(diagram.confirmPrompt);
+
+  return (
+    <div className="pr-stage w-full max-w-4xl space-y-5">
+      <WorkflowDiagram
+        key={diagram.revision}
+        diagram={{ nodes: diagram.nodes, edges: diagram.edges }}
+        variant="wonderful"
+        emptyMessage="Drawing your workflow…"
+        animate
+        compact
+      />
+
+      {awaiting ? (
+        <div className="flex items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={onNeedsFix}
+            className="pr-body rounded-full px-3.5 py-2 text-[13px] text-[var(--pr-muted)] transition-colors hover:bg-black/[0.04] hover:text-[var(--pr-ink)]"
+          >
+            Needs a fix
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="pr-pill !bg-[var(--pr-dark)] !text-[var(--pr-cream)] hover:!bg-[#1d1d20]"
+          >
+            Looks right
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export function AutomationProposalCard({
+  proposal,
+  onConfirm,
+  onReject,
+}: {
+  proposal: AutomationProposal;
+  onConfirm: () => void;
+  onReject: () => void;
+}) {
+  const agentPreview = proposal.agentSteps.slice(0, 3);
+  const humanPreview = proposal.humanSteps.slice(0, 2);
+
+  return (
+    <div className="pr-stage w-full max-w-lg space-y-6 text-center">
+      <div className="space-y-3">
+        <p className="pr-label">Your agent</p>
+        <h3 className="pr-display text-[1.75rem] leading-[1.1] text-[var(--pr-ink)] md:text-[2rem]">
+          {proposal.name}
+        </h3>
+        <p className="pr-body mx-auto max-w-md text-[15px] leading-7 text-[var(--pr-soft)]">
+          {proposal.outcome}
+        </p>
+      </div>
+
+      <div className="space-y-3 text-left">
+        <PlanRow label="Starts when" value={proposal.trigger} />
+        {agentPreview.map((step, index) => (
+          <PlanRow
+            key={`agent-${index}`}
+            label={index === 0 ? "Then it" : undefined}
+            value={step}
+            tone="agent"
+          />
+        ))}
+        {humanPreview.map((step, index) => (
+          <PlanRow
+            key={`human-${index}`}
+            label={index === 0 ? "You still" : undefined}
+            value={step}
+            tone="human"
+          />
+        ))}
+      </div>
+
+      {proposal.status === "proposed" ? (
+        <div className="flex items-center justify-center gap-2 pt-1">
+          <button
+            type="button"
+            onClick={onReject}
+            className="pr-body rounded-full px-3.5 py-2 text-[13px] text-[var(--pr-muted)] transition-colors hover:bg-black/[0.04] hover:text-[var(--pr-ink)]"
+          >
+            Not this one
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="pr-pill !bg-[var(--pr-dark)] !text-[var(--pr-cream)] hover:!bg-[#1d1d20]"
+          >
+            Yes, prepare this
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export function IntegrationConnectPanel({
+  integrations,
+  onConnect,
+}: {
+  integrations: IntegrationRequirement[];
+  onConnect: (id: string) => void;
+}) {
+  if (integrations.length === 0) return null;
+
+  return (
+    <div className="pr-stage w-full max-w-md space-y-6 text-center">
+      <div className="space-y-2">
+        <p className="pr-label">Connect apps</p>
+        <h3 className="pr-display text-[1.6rem] text-[var(--pr-ink)]">
+          A few apps to link
+        </h3>
+        <p className="pr-body text-[14px] leading-6 text-[var(--pr-muted)]">
+          Tap to connect. This is a preview for now.
+        </p>
+      </div>
+
+      <ul className="space-y-3 text-left">
+        {integrations.map((item) => (
+          <li
+            key={item.id}
+            className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--pr-line)] px-4 py-3"
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <AppLogo name={item.app} size={28} />
+              <div className="min-w-0">
+                <p className="pr-body text-[15px] text-[var(--pr-ink)]">
+                  {item.app}
+                </p>
+                {item.connected ? (
+                  <p className="pr-body text-[12px] text-emerald-700">Connected</p>
+                ) : item.required ? (
+                  <p className="pr-body text-[12px] text-[var(--pr-muted)]">
+                    Needed
+                  </p>
+                ) : null}
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={item.connected}
+              onClick={() => onConnect(item.id)}
+              className={cn(
+                "pr-pill shrink-0 !px-3.5 !py-2 !text-[12.5px]",
+                item.connected
+                  ? "!bg-black/[0.04] !text-[var(--pr-muted)]"
+                  : "!bg-[var(--pr-dark)] !text-[var(--pr-cream)] hover:!bg-[#1d1d20]",
+              )}
+            >
+              {item.connected ? "Done" : "Connect"}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export function AgentReadinessCard({ readiness }: { readiness: AgentReadiness }) {
+  const leftovers = readiness.remainingSetup.slice(0, 3);
+  const apps = readiness.requiredIntegrations.slice(0, 4);
+
+  return (
+    <div className="pr-stage w-full max-w-xl space-y-6 text-center">
+      <div className="space-y-3">
+        <StatusChip
+          label={readiness.readyToCreate ? "Ready" : "Almost there"}
+          tone={readiness.readyToCreate ? "good" : "warn"}
+        />
+        <h3 className="pr-display text-[1.75rem] leading-[1.1] text-[var(--pr-ink)] md:text-[2.1rem]">
+          {readiness.agentName}
+        </h3>
+        <p className="pr-body mx-auto max-w-md text-[15px] leading-7 text-[var(--pr-soft)]">
+          {readiness.outcome}
+        </p>
+      </div>
+
+      {readiness.proposedAgentDiagram ? (
+        <WorkflowDiagram
+          agentDiagram={readiness.proposedAgentDiagram}
+          variant="wonderful"
+          animate
+          compact
+        />
+      ) : (
+        <div className="space-y-3 text-left">
+          <PlanRow label="Starts when" value={readiness.trigger} />
+        </div>
+      )}
+
+      {apps.length ? (
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {apps.map((app) => (
+            <span
+              key={app}
+              className="pr-body inline-flex items-center gap-2 rounded-full border border-[var(--pr-line)] px-3 py-1.5 text-[12.5px] text-[var(--pr-soft)]"
+            >
+              <AppLogo name={app} size={14} />
+              {app}
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      {readiness.readyToCreate ? (
+        <p className="pr-body text-[13px] leading-6 text-[var(--pr-muted)]">
+          Ready to create. Nothing has been deployed yet.
+        </p>
+      ) : leftovers.length ? (
+        <div className="mx-auto max-w-sm space-y-2 text-left">
+          <p className="pr-label text-center">Still needed</p>
+          {leftovers.map((item) => (
+            <div
+              key={item}
+              className="pr-body flex gap-2 text-[13.5px] leading-6 text-[var(--pr-soft)]"
+            >
+              <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-[rgba(23,23,25,0.35)]" />
+              <span>{item}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="pr-body text-[13px] leading-6 text-[var(--pr-muted)]">
+          {readiness.statusNote}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function PlanRow({
+  label,
+  value,
+  tone = "default",
+}: {
+  label?: string;
+  value: string;
+  tone?: "default" | "agent" | "human";
+}) {
+  return (
+    <div className="flex gap-3 rounded-2xl border border-[var(--pr-line)] px-4 py-3">
+      <span
+        aria-hidden
+        className={cn(
+          "mt-1.5 size-2 shrink-0 rounded-full",
+          tone === "agent" && "bg-[#111113]",
+          tone === "human" && "bg-sky-400",
+          tone === "default" && "bg-black/25",
+        )}
+      />
+      <div className="min-w-0 space-y-0.5">
+        {label ? <p className="pr-label !text-[10px]">{label}</p> : null}
+        <p className="pr-body text-[14px] leading-6 text-[var(--pr-ink)]">
+          {value}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 /**
- * Secondary transcript. Collapsed by default so the conversation stays the
- * focus, but always reachable and announced to screen readers.
+ * Full-height transcript rail on the right, so the call stays centered.
  */
 export function TranscriptPanel({
   transcript,
@@ -283,46 +669,49 @@ export function TranscriptPanel({
   const spoken = transcript.filter((line) => line.role !== "system");
 
   return (
-    <div className="w-full max-w-xl">
-      <div className="flex justify-center">
+    <aside
+      className={cn(
+        "fixed top-0 right-0 z-20 flex h-dvh flex-col border-l border-[var(--pr-line)] bg-white transition-[width,transform] duration-300 ease-out",
+        open ? "w-[min(22rem,92vw)]" : "w-12",
+      )}
+      aria-label="Call transcript"
+    >
+      <div
+        className={cn(
+          "flex items-center border-b border-[var(--pr-line)] px-3 py-4",
+          open ? "justify-between" : "justify-center",
+        )}
+      >
+        {open ? <p className="pr-label">Transcript</p> : null}
         <button
           type="button"
           onClick={onToggle}
           aria-expanded={open}
-          className="pr-body inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] text-[var(--pr-muted)] transition-colors hover:text-[var(--pr-ink)]"
+          aria-label={open ? "Hide transcript" : "Show transcript"}
+          className="flex size-8 items-center justify-center rounded-full text-[var(--pr-muted)] transition-colors hover:bg-black/[0.04] hover:text-[var(--pr-ink)]"
         >
-          {open ? "Hide transcript" : "Show transcript"}
-          <svg
-            viewBox="0 0 24 24"
-            className={cn(
-              "size-3.5 transition-transform",
-              open && "rotate-180",
-            )}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            aria-hidden
-          >
-            <path d="m6 9 6 6 6-6" />
-          </svg>
+          {open ? (
+            <CaretRight size={16} weight="bold" />
+          ) : (
+            <CaretLeft size={16} weight="bold" />
+          )}
         </button>
       </div>
 
       {open ? (
-        <div className="pr-card mt-3 max-h-64 overflow-y-auto px-5 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
           {spoken.length === 0 ? (
-            <p className="pr-body text-[13.5px] leading-6 text-[var(--pr-muted)]">
+            <p className="pr-body text-[13px] leading-6 text-[var(--pr-muted)]">
               The transcript will fill in as you talk.
             </p>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-5">
               {spoken.map((line) => (
                 <div key={line.id} className="space-y-1">
                   <p className="pr-label !text-[10px]">
                     {line.role === "user" ? "You" : "Pacific"}
                   </p>
-                  <p className="pr-body text-[13.5px] leading-6 text-[var(--pr-soft)]">
+                  <p className="pr-body text-[13px] leading-6 text-[var(--pr-soft)]">
                     {line.text}
                   </p>
                 </div>
@@ -331,34 +720,37 @@ export function TranscriptPanel({
             </div>
           )}
         </div>
-      ) : null}
-    </div>
-  );
-}
-
-/** Small row of logos for applications Pacific has picked up so far. */
-export function CapturedApps({ applications }: { applications: string[] }) {
-  if (applications.length === 0) return null;
-  const shown = applications.slice(0, 6);
-  const extra = applications.length - shown.length;
-
-  return (
-    <div className="pr-fade-in flex flex-wrap items-center justify-center gap-2">
-      <span className="pr-label !text-[10px]">Noted</span>
-      {shown.map((app) => (
-        <span
-          key={app}
-          className="pr-chip !gap-1.5 !px-2.5 !py-1 !text-[11.5px]"
+      ) : (
+        <button
+          type="button"
+          onClick={onToggle}
+          className="pr-body flex flex-1 items-center justify-center px-2 text-[11px] tracking-[0.14em] text-[var(--pr-muted)] uppercase [writing-mode:vertical-rl]"
         >
-          <AppLogo name={app} size={12} />
-          {app}
-        </span>
-      ))}
-      {extra > 0 ? (
-        <span className="pr-body text-[11.5px] text-[var(--pr-muted)]">
-          +{extra} more
-        </span>
-      ) : null}
-    </div>
+          Transcript
+        </button>
+      )}
+    </aside>
   );
 }
+
+function StatusChip({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: "good" | "warn" | "neutral";
+}) {
+  return (
+    <span
+      className={cn(
+        "pr-body inline-flex rounded-full px-2.5 py-1 text-[11px] tracking-[0.04em] uppercase",
+        tone === "good" && "bg-emerald-500/10 text-emerald-800",
+        tone === "warn" && "bg-amber-500/10 text-amber-800",
+        tone === "neutral" && "bg-black/[0.04] text-[var(--pr-muted)]",
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+

@@ -8,6 +8,16 @@
  * @module
  */
 
+import type * as automationEngine from "../automationEngine.js";
+import type * as automations from "../automations.js";
+import type * as composio from "../composio.js";
+import type * as crons from "../crons.js";
+import type * as http from "../http.js";
+import type * as knowledge from "../knowledge.js";
+import type * as lib_auth from "../lib/auth.js";
+import type * as lib_openai from "../lib/openai.js";
+import type * as lib_schedule from "../lib/schedule.js";
+import type * as lib_validators from "../lib/validators.js";
 import type * as users from "../users.js";
 
 import type {
@@ -17,6 +27,16 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  automationEngine: typeof automationEngine;
+  automations: typeof automations;
+  composio: typeof composio;
+  crons: typeof crons;
+  http: typeof http;
+  knowledge: typeof knowledge;
+  "lib/auth": typeof lib_auth;
+  "lib/openai": typeof lib_openai;
+  "lib/schedule": typeof lib_schedule;
+  "lib/validators": typeof lib_validators;
   users: typeof users;
 }>;
 

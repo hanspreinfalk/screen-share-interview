@@ -13,6 +13,7 @@ import {
   type LiveWorkflowDiagram,
 } from "@/lib/interview-artifacts";
 import type { RealtimeStatus, TranscriptLine } from "@/lib/session-types";
+import { inferTriggerTypes, toToolkitSlug } from "@/lib/toolkit";
 import {
   createEmptyWorkflowModel,
   mergeWorkflowModel,
@@ -111,6 +112,46 @@ export type RealtimeSessionCallbacks = {
     reason: string;
     whatToShow: string;
   }) => void;
+  /** Real Composio tool discovery so proposals only use tools that exist. */
+  onFindTools?: (query: {
+    toolkits: string[];
+    intent: string;
+  }) => Promise<
+    Array<{
+      slug: string;
+      name: string;
+      description?: string;
+      toolkit?: string;
+    }>
+  >;
+  /** Real Composio OAuth connect for a required app. */
+  onConnectIntegration?: (
+    integration: IntegrationRequirement,
+  ) => Promise<{
+    connected: boolean;
+    redirectUrl?: string | null;
+    connectedAccountId?: string;
+    error?: string;
+  }>;
+  /** Persist a confirmed automation to Convex and optionally start a test run. */
+  onCreateAutomation?: (payload: {
+    proposal: AutomationProposal;
+    readiness: AgentReadiness;
+    integrations: IntegrationRequirement[];
+    test: boolean;
+  }) => Promise<{
+    automationId: string;
+    executionId?: string;
+    error?: string;
+  }>;
+  /** Poll a test run so Pacific can report the real, verified outcome. */
+  onAwaitTestResult?: (executionId: string) => Promise<{
+    status: string;
+    verified?: boolean;
+    summary?: string;
+    issues?: string[];
+    error?: string;
+  }>;
 };
 
 export class RealtimeVoiceSession {
@@ -130,6 +171,8 @@ export class RealtimeVoiceSession {
   private sendingFrame = false;
   private startedAt = 0;
   private handledToolCalls = new Set<string>();
+  /** Tool slugs confirmed to exist via find_tools, so steps can be trusted. */
+  private verifiedToolSlugs = new Set<string>();
   private status: RealtimeStatus = "idle";
   /** True while the Realtime API is generating a response. */
   private responseInFlight = false;
@@ -292,31 +335,167 @@ export class RealtimeVoiceSession {
 
     this.notifyModel(
       confirmed
-        ? "[The user confirmed this automation. Call show_integrations for the apps it needs, then show_agent_readiness when requirements are clear.]"
+        ? "[The user confirmed this automation. Call show_integrations for the apps it needs with real Composio toolkit names. After connections, call show_agent_readiness. The user can then create the durable automation.]"
         : "[The user rejected this automation. Ask what they would prefer and propose a better fit. Do not proceed with integrations for the rejected plan.]",
       { triggerResponse: true },
     );
   }
 
   /**
-   * Simulated OAuth connect for a required integration button.
+   * Start a real Composio connection for a required integration.
    */
-  connectIntegration(id: string) {
-    const integrations = this.artifacts.integrations.map((item) =>
-      item.id === id ? { ...item, connected: true } : item,
+  async connectIntegration(id: string) {
+    const target = this.artifacts.integrations.find((item) => item.id === id);
+    if (!target || target.connected) return;
+
+    if (!this.callbacks.onConnectIntegration) {
+      this.notifyModel(
+        `[Connect ${target.app} failed: connection bridge is unavailable.]`,
+        { triggerResponse: true },
+      );
+      return;
+    }
+
+    const result = await this.callbacks.onConnectIntegration(target);
+    if (result.redirectUrl) {
+      window.open(result.redirectUrl, "_blank", "noopener,noreferrer");
+      this.notifyModel(
+        `[The user opened the real OAuth connect flow for ${target.app} (${target.toolkit}). Wait for them to finish, then call show_integrations again or check connection status before readiness.]`,
+        { triggerResponse: true },
+      );
+      return;
+    }
+
+    if (result.connected) {
+      const integrations = this.artifacts.integrations.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              connected: true,
+              connectedAccountId: result.connectedAccountId,
+            }
+          : item,
+      );
+      this.setArtifacts({ ...this.artifacts, integrations });
+      this.notifyModel(
+        `[The user connected ${target.app} for real via Composio. Update readiness with honest connection status.]`,
+        { triggerResponse: true },
+      );
+      return;
+    }
+
+    this.notifyModel(
+      `[Connect ${target.app} failed${result.error ? `: ${result.error}` : ""}. Help them retry or choose another path.]`,
+      { triggerResponse: true },
     );
-    const connected = integrations.find((item) => item.id === id);
-    if (!connected) return;
+  }
+
+  /** Create the durable automation after readiness is shown. */
+  async createAutomation(options?: { test?: boolean }) {
+    const proposal = this.artifacts.automation;
+    const readiness = this.artifacts.readiness;
+    if (!proposal || proposal.status !== "confirmed" || !readiness) {
+      return;
+    }
+    if (!this.callbacks.onCreateAutomation) {
+      this.notifyModel(
+        "[Could not create the automation: persistence bridge unavailable.]",
+        { triggerResponse: true },
+      );
+      return;
+    }
+
+    const result = await this.callbacks.onCreateAutomation({
+      proposal,
+      readiness,
+      integrations: this.artifacts.integrations,
+      test: options?.test === true,
+    });
+
+    if (result.error || !result.automationId) {
+      this.notifyModel(
+        `[Creating the automation failed${result.error ? `: ${result.error}` : ""}.]`,
+        { triggerResponse: true },
+      );
+      return;
+    }
 
     this.setArtifacts({
       ...this.artifacts,
-      integrations,
+      readiness: {
+        ...readiness,
+        automationId: result.automationId,
+        readyToCreate: true,
+        statusNote: result.executionId
+          ? "Created. Running a real test now."
+          : "Created and saved. You can run it from Automations.",
+        remainingSetup: [],
+        testStatus: result.executionId ? "running" : null,
+      },
     });
 
     this.notifyModel(
-      `[The user clicked Connect ${connected.app}. Treat this as a simulated connection for this session only, not real OAuth. Update readiness accordingly.]`,
+      result.executionId
+        ? `[The automation "${proposal.name}" was created and a real test run started. Say one short sentence that you are running it now, then WAIT. Do not claim it works yet.]`
+        : `[The automation "${proposal.name}" was created and saved. Tell the user briefly in one sentence. It has not been tested yet, so do not claim it works.]`,
       { triggerResponse: true },
     );
+
+    // Watch the real run and report honestly: verified, unverified, or failed.
+    if (result.executionId && this.callbacks.onAwaitTestResult) {
+      try {
+        const outcome = await this.callbacks.onAwaitTestResult(
+          result.executionId,
+        );
+        const current = this.artifacts.readiness;
+        const passed = outcome.status === "succeeded" && outcome.verified === true;
+
+        this.setArtifacts({
+          ...this.artifacts,
+          readiness: current
+            ? {
+                ...current,
+                testStatus: passed
+                  ? "passed"
+                  : outcome.status === "awaiting_approval"
+                    ? "awaiting_approval"
+                    : outcome.status === "succeeded"
+                      ? "unverified"
+                      : "failed",
+                testSummary:
+                  outcome.summary ?? outcome.error ?? null,
+              }
+            : current,
+        });
+
+        if (passed) {
+          this.notifyModel(
+            `[The test run SUCCEEDED and was verified: ${outcome.summary ?? "the action completed"}. Tell the user it works, in one short sentence, and what it did.]`,
+            { triggerResponse: true },
+          );
+        } else if (outcome.status === "awaiting_approval") {
+          this.notifyModel(
+            "[The test run is paused waiting for the user's approval on a step. Tell them in one sentence that it needs their approval to continue.]",
+            { triggerResponse: true },
+          );
+        } else if (outcome.status === "succeeded") {
+          this.notifyModel(
+            `[The test run finished but could NOT be verified: ${outcome.summary ?? "no evidence the action completed"}. Be honest: say it ran but you could not confirm the result, and what you would check.]`,
+            { triggerResponse: true },
+          );
+        } else {
+          this.notifyModel(
+            `[The test run FAILED: ${outcome.error ?? outcome.summary ?? "unknown error"}. Be honest and specific about what blocked it in one or two short sentences. Do not claim it works.]`,
+            { triggerResponse: true },
+          );
+        }
+      } catch {
+        this.notifyModel(
+          "[Could not read the test result. Tell the user it was created but the test outcome is unknown, and they can run it from Automations.]",
+          { triggerResponse: true },
+        );
+      }
+    }
   }
 
   async start(options?: { withScreen?: boolean }) {
@@ -727,6 +906,54 @@ export class RealtimeVoiceSession {
       args = {};
     }
 
+    if (call.name === "find_tools") {
+      const callId = call.call_id;
+      const toolkits = asStringArray(args.toolkits).map(toToolkitSlug);
+      const intent =
+        typeof args.intent === "string" ? args.intent.trim() : "";
+
+      if (!this.callbacks.onFindTools || !toolkits.length) {
+        this.replyToTool(callId, {
+          ok: false,
+          message:
+            "Tool discovery is unavailable. Ask the user which app they want this to happen in.",
+        });
+        return;
+      }
+
+      // Async lookup: reply once the real slugs are known so the model never
+      // invents a tool that does not exist.
+      void this.callbacks
+        .onFindTools({ toolkits, intent })
+        .then((tools) => {
+          this.verifiedToolSlugs = new Set([
+            ...this.verifiedToolSlugs,
+            ...tools.map((tool) => tool.slug),
+          ]);
+          this.replyToTool(callId, {
+            ok: true,
+            tools: tools.slice(0, 12).map((tool) => ({
+              slug: tool.slug,
+              name: tool.name,
+              toolkit: tool.toolkit,
+            })),
+            message: tools.length
+              ? "Use these exact slugs as toolSlug on the proposal steps."
+              : "No tools matched. Tell the user this specific action is not supported and offer the closest thing that is.",
+          });
+        })
+        .catch((error: unknown) => {
+          this.replyToTool(callId, {
+            ok: false,
+            message:
+              error instanceof Error
+                ? `Tool lookup failed: ${error.message}`
+                : "Tool lookup failed.",
+          });
+        });
+      return;
+    }
+
     if (call.name === "update_workflow_model") {
       const patch = { ...args } as Partial<WorkflowModel> & {
         observation?: { text: string; source: "observed" | "explained" | "inferred" };
@@ -756,13 +983,23 @@ export class RealtimeVoiceSession {
 
     if (call.name === "show_workflow_diagram") {
       const nodes = parseWorkflowNodes(args.nodes);
-      const edges = parseWorkflowEdges(args.edges);
+      let edges = parseWorkflowEdges(args.edges);
       if (!nodes.length) {
         this.replyToTool(call.call_id, {
           ok: false,
           message: "Diagram needs at least one node.",
         });
         return;
+      }
+
+      // If the model forgot edges, still draw a readable left-to-right flow.
+      if (!edges.length && nodes.length > 1) {
+        edges = nodes.slice(0, -1).map((node, index) => ({
+          id: `auto-${node.id}-${nodes[index + 1].id}`,
+          source: node.id,
+          target: nodes[index + 1].id,
+          kind: "default" as const,
+        }));
       }
 
       const previous = this.artifacts.liveDiagram;
@@ -832,7 +1069,138 @@ export class RealtimeVoiceSession {
         this.replyToTool(call.call_id, {
           ok: false,
           message:
-            "The workflow is not confirmed yet. Update and confirm the diagram first.",
+            "The workflow is not confirmed yet. Call show_workflow_diagram, then ask_workflow_confirmation, and wait for the user to press Looks right.",
+        });
+        return;
+      }
+
+      const diagram = this.artifacts.liveDiagram;
+      let agentSteps = asStringArray(
+        args.agentSteps ?? args.steps ?? args.actions,
+      );
+      const humanSteps = asStringArray(
+        args.humanSteps ?? args.approvals ?? args.humanActions,
+      );
+      const toolkits = asStringArray(args.toolkits ?? args.apps).map(
+        toToolkitSlug,
+      );
+      let trigger =
+        typeof args.trigger === "string"
+          ? args.trigger.trim()
+          : typeof args.startsWhen === "string"
+            ? args.startsWhen.trim()
+            : "";
+      let name =
+        typeof args.name === "string" && args.name.trim()
+          ? args.name.trim()
+          : "";
+      let outcome =
+        typeof args.outcome === "string" && args.outcome.trim()
+          ? args.outcome.trim()
+          : typeof args.description === "string"
+            ? args.description.trim()
+            : "";
+
+      // Fill sparse proposals from the confirmed diagram so the card is never blank.
+      if (!agentSteps.length && diagram?.nodes?.length) {
+        agentSteps = diagram.nodes
+          .filter((node) => node.kind !== "start" && node.kind !== "end")
+          .map((node) => node.label);
+      }
+      if (!name) {
+        name = diagram?.title?.trim() || "Proposed automation";
+      }
+      if (!outcome) {
+        outcome = diagram?.summary?.trim() || "";
+      }
+      if (!trigger) {
+        trigger = "When you run it from Automations";
+      }
+
+      if (!agentSteps.length && !outcome) {
+        this.replyToTool(call.call_id, {
+          ok: false,
+          message:
+            "Proposal was empty. Include name, outcome, trigger, and agentSteps, then try again.",
+        });
+        return;
+      }
+      const steps = Array.isArray(args.steps)
+        ? (args.steps as unknown[]).flatMap((raw, index) => {
+            if (typeof raw === "string" && raw.trim()) {
+              return [
+                {
+                  id: `step_${index + 1}`,
+                  title: raw.trim(),
+                  instruction: raw.trim(),
+                  toolSlug: undefined as string | undefined,
+                  toolkit: undefined as string | undefined,
+                  requiresApproval: false,
+                },
+              ];
+            }
+            if (!raw || typeof raw !== "object") return [];
+            const item = raw as Record<string, unknown>;
+            const title =
+              typeof item.title === "string"
+                ? item.title.trim()
+                : typeof item.label === "string"
+                  ? item.label.trim()
+                  : agentSteps[index] ?? `Step ${index + 1}`;
+            const instruction =
+              typeof item.instruction === "string"
+                ? item.instruction.trim()
+                : title;
+            return [
+              {
+                id:
+                  typeof item.id === "string" && item.id.trim()
+                    ? item.id.trim()
+                    : `step_${index + 1}`,
+                title,
+                instruction,
+                toolSlug:
+                  typeof item.toolSlug === "string"
+                    ? item.toolSlug.trim()
+                    : undefined,
+                toolkit:
+                  typeof item.toolkit === "string"
+                    ? toToolkitSlug(item.toolkit)
+                    : undefined,
+                requiresApproval: item.requiresApproval === true,
+              },
+            ];
+          })
+        : agentSteps.map((title, index) => ({
+            id: `step_${index + 1}`,
+            title,
+            instruction: title,
+            toolSlug: undefined as string | undefined,
+            toolkit: undefined as string | undefined,
+            requiresApproval: false,
+          }));
+
+      // An automation whose steps have no real tool can never execute, so
+      // refuse the proposal instead of letting the user confirm a no-op.
+      const runnableSteps = steps.filter((step) => Boolean(step.toolSlug));
+      if (!runnableSteps.length) {
+        this.replyToTool(call.call_id, {
+          ok: false,
+          message:
+            "None of these steps have a real Composio toolSlug, so this automation could not actually run. Call find_tools for the apps involved, then propose again with the exact slugs on each step.",
+        });
+        return;
+      }
+
+      // If not one slug was confirmed by find_tools, the model is guessing.
+      const anyVerified = runnableSteps.some((step) =>
+        this.verifiedToolSlugs.has(step.toolSlug as string),
+      );
+      if (!anyVerified) {
+        this.replyToTool(call.call_id, {
+          ok: false,
+          message:
+            "These tool slugs were never returned by find_tools, so they may not exist. Call find_tools for the apps involved, then propose again using the exact slugs it returns.",
         });
         return;
       }
@@ -842,19 +1210,21 @@ export class RealtimeVoiceSession {
           typeof args.id === "string" && args.id.trim()
             ? args.id.trim()
             : crypto.randomUUID(),
-        name:
-          typeof args.name === "string" ? args.name.trim() : "Proposed agent",
-        outcome:
-          typeof args.outcome === "string" ? args.outcome.trim() : "",
-        trigger:
-          typeof args.trigger === "string" ? args.trigger.trim() : "",
-        agentSteps: asStringArray(args.agentSteps),
-        humanSteps: asStringArray(args.humanSteps),
+        name,
+        outcome,
+        trigger,
+        agentSteps: agentSteps.length
+          ? agentSteps
+          : runnableSteps.map((step) => step.title),
+        humanSteps,
         feasibilityNote:
           typeof args.feasibilityNote === "string"
             ? args.feasibilityNote.trim()
             : "",
         status: "proposed",
+        toolkits,
+        steps: runnableSteps,
+        triggerTypes: inferTriggerTypes(trigger),
       };
 
       this.setArtifacts({
@@ -903,7 +1273,7 @@ export class RealtimeVoiceSession {
         ok: true,
         count: integrations.length,
         message:
-          "Connect buttons are visible and replaced the proposal. They are simulated only. Update readiness after the user clicks.",
+          "Real Composio Connect buttons are visible. Wait for the user to connect required apps, then update readiness honestly.",
       });
       return;
     }
@@ -1089,33 +1459,71 @@ export class RealtimeVoiceSession {
 
 function asStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
-  return value
-    .filter((item): item is string => typeof item === "string")
-    .map((item) => item.trim())
-    .filter(Boolean);
+  return value.flatMap((item) => {
+    if (typeof item === "string" && item.trim()) return [item.trim()];
+    if (item && typeof item === "object") {
+      const record = item as Record<string, unknown>;
+      for (const key of ["text", "title", "label", "name", "instruction"]) {
+        const candidate = record[key];
+        if (typeof candidate === "string" && candidate.trim()) {
+          return [candidate.trim()];
+        }
+      }
+    }
+    return [];
+  });
+}
+
+function normalizeWorkflowNodeKind(
+  value: unknown,
+): WorkflowDiagramNode["kind"] | null {
+  if (typeof value !== "string") return null;
+  const kind = value.trim().toLowerCase();
+  if (
+    kind === "start" ||
+    kind === "action" ||
+    kind === "decision" ||
+    kind === "loop" ||
+    kind === "end" ||
+    kind === "handoff"
+  ) {
+    return kind;
+  }
+  // Common model aliases
+  if (kind === "step" || kind === "process" || kind === "task") return "action";
+  if (kind === "begin" || kind === "trigger") return "start";
+  if (kind === "finish" || kind === "done" || kind === "complete") return "end";
+  if (kind === "branch" || kind === "choice" || kind === "if") return "decision";
+  if (kind === "retry" || kind === "repeat") return "loop";
+  if (kind === "human" || kind === "manual" || kind === "review") return "handoff";
+  return null;
 }
 
 function parseWorkflowNodes(value: unknown): WorkflowDiagramNode[] {
   if (!Array.isArray(value)) return [];
-  const kinds = new Set([
-    "start",
-    "action",
-    "decision",
-    "loop",
-    "end",
-    "handoff",
-  ]);
 
-  return value.flatMap((raw) => {
+  return value.flatMap((raw, index) => {
     if (!raw || typeof raw !== "object") return [];
     const item = raw as Record<string, unknown>;
-    if (typeof item.id !== "string" || typeof item.label !== "string") return [];
-    if (typeof item.kind !== "string" || !kinds.has(item.kind)) return [];
+    const label =
+      typeof item.label === "string"
+        ? item.label
+        : typeof item.name === "string"
+          ? item.name
+          : typeof item.title === "string"
+            ? item.title
+            : null;
+    if (!label) return [];
+    const kind = normalizeWorkflowNodeKind(item.kind) ?? "action";
+    const id =
+      typeof item.id === "string" && item.id.trim()
+        ? item.id.trim()
+        : `node_${index + 1}`;
     return [
       {
-        id: item.id,
-        label: item.label,
-        kind: item.kind as WorkflowDiagramNode["kind"],
+        id,
+        label,
+        kind,
         application:
           typeof item.application === "string" ? item.application : undefined,
         source: normalizeEvidenceSource(item.source),
@@ -1128,21 +1536,33 @@ function parseWorkflowEdges(value: unknown): WorkflowDiagramEdge[] {
   if (!Array.isArray(value)) return [];
   const kinds = new Set(["default", "yes", "no", "loop", "handoff"]);
 
-  return value.flatMap((raw) => {
+  return value.flatMap((raw, index) => {
     if (!raw || typeof raw !== "object") return [];
     const item = raw as Record<string, unknown>;
-    if (
-      typeof item.id !== "string" ||
-      typeof item.source !== "string" ||
-      typeof item.target !== "string"
-    ) {
-      return [];
-    }
+    const source =
+      typeof item.source === "string"
+        ? item.source
+        : typeof item.from === "string"
+          ? item.from
+          : null;
+    const target =
+      typeof item.target === "string"
+        ? item.target
+        : typeof item.to === "string"
+          ? item.to
+          : null;
+    if (!source || !target) return [];
+
+    const id =
+      typeof item.id === "string" && item.id.trim()
+        ? item.id.trim()
+        : `e-${source}-${target}-${index}`;
+
     return [
       {
-        id: item.id,
-        source: item.source,
-        target: item.target,
+        id,
+        source,
+        target,
         label: typeof item.label === "string" ? item.label : undefined,
         kind:
           typeof item.kind === "string" && kinds.has(item.kind)
@@ -1165,10 +1585,16 @@ function parseIntegrations(value: unknown): IntegrationRequirement[] {
     ) {
       return [];
     }
+    const app = item.app.trim();
+    const toolkit =
+      typeof item.toolkit === "string" && item.toolkit.trim()
+        ? toToolkitSlug(item.toolkit)
+        : toToolkitSlug(app);
     return [
       {
         id: item.id,
-        app: item.app.trim(),
+        app,
+        toolkit,
         reason: item.reason.trim(),
         required: item.required !== false,
         connected: false,

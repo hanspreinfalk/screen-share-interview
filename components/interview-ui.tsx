@@ -11,8 +11,10 @@ import {
   Play,
 } from "@phosphor-icons/react";
 
+import Link from "next/link";
+
 import { AppLogo } from "@/components/app-logo";
-import { WorkflowDiagram } from "@/components/workflow-diagram";
+import { StatusPill } from "@/components/pacific/primitives";
 import type {
   AgentReadiness,
   AutomationProposal,
@@ -57,7 +59,7 @@ export function VoiceOrb({
   return (
     <div
       className={cn(
-        "pr-wave relative flex h-[120px] w-[220px] items-center justify-center gap-[5px]",
+        "pr-wave relative flex h-[88px] w-[180px] items-center justify-center gap-[4px]",
         live && "pr-wave-live",
         !live && speaking && "pr-wave-speaking",
         !live && thinking && "pr-wave-thinking",
@@ -86,28 +88,37 @@ export function VoiceOrb({
   );
 }
 
-export function CallStatusLabel({ state }: { state: VoiceState }) {
+export function CallStatusLabel({
+  state,
+  wrappingUp = false,
+}: {
+  state: VoiceState;
+  wrappingUp?: boolean;
+}) {
   const label =
     state === "connecting"
       ? "Connecting"
       : state === "speaking"
-        ? "Pacific is speaking"
+        ? "Speaking"
         : state === "thinking"
-          ? "Pacific is thinking"
+          ? "Thinking"
           : state === "paused"
-            ? "Call paused"
+            ? "Paused"
             : state === "muted"
-              ? "You are muted"
+              ? "Muted"
               : state === "listening"
                 ? "Listening"
                 : "Ready";
 
   return (
     <p
-      className="pr-body text-[15px] tracking-[-0.01em] text-[var(--pr-soft)]"
+      className={cn(
+        "pr-body text-[13px] tracking-[0.02em] text-[var(--pr-muted)]",
+        wrappingUp && "text-[var(--pr-warn)]",
+      )}
       aria-live="polite"
     >
-      {label}
+      {wrappingUp ? `${label} · wrapping up` : label}
     </p>
   );
 }
@@ -146,7 +157,7 @@ export function Countdown({
           cy={size / 2}
           r={r}
           fill="none"
-          stroke={isFinalMinute ? "#c2761f" : "rgba(23,23,25,0.55)"}
+          stroke={isFinalMinute ? "var(--pr-warn)" : "rgba(23,23,25,0.55)"}
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -157,7 +168,7 @@ export function Countdown({
       <span
         className={cn(
           "pr-body text-[13px] tabular-nums",
-          isFinalMinute ? "text-[#a8641a]" : "text-[var(--pr-muted)]",
+          isFinalMinute ? "text-[var(--pr-warn)]" : "text-[var(--pr-muted)]",
         )}
       >
         {formatClock(remaining)}
@@ -284,7 +295,7 @@ export function ScreenSharePrompt({
             type="button"
             onClick={onAccept}
             disabled={pending}
-            className="pr-pill !bg-[var(--pr-dark)] !text-[var(--pr-cream)] hover:!bg-[#1d1d20] disabled:opacity-60"
+            className="pr-pill !bg-[var(--pr-dark)] !text-[var(--pr-cream)] hover:!bg-[var(--pr-dark-hover)] disabled:opacity-60"
           >
             {pending ? "Choosing window" : "Share screen"}
           </button>
@@ -364,11 +375,46 @@ export function StopShareHint({
       <button
         type="button"
         onClick={onStop}
-        className="pr-pill shrink-0 !bg-[var(--pr-dark)] !text-[var(--pr-cream)] hover:!bg-[#1d1d20]"
+        className="pr-pill shrink-0 !bg-[var(--pr-dark)] !text-[var(--pr-cream)] hover:!bg-[var(--pr-dark-hover)]"
       >
         Stop sharing
       </button>
     </div>
+  );
+}
+
+function SimpleWorkflowFlow({
+  nodes,
+}: {
+  nodes: LiveWorkflowDiagram["nodes"];
+}) {
+  if (!nodes.length) {
+    return (
+      <div className="flex min-h-[140px] items-center justify-center px-4 text-center">
+        <p className="pr-body text-[13.5px] text-[var(--pr-muted)]">
+          Drawing your workflow…
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <ol className="flex flex-col gap-2 px-4 py-4 sm:px-5">
+      {nodes.map((node, index) => (
+        <li
+          key={`${node.id}-${index}`}
+          className="flex items-center gap-3 rounded-2xl border border-[var(--pr-line)] bg-white px-3 py-2.5"
+        >
+          <span className="pr-display flex size-6 shrink-0 items-center justify-center text-[13px] text-[var(--pr-ink)]/30">
+            {index + 1}
+          </span>
+          {node.application ? <AppLogo name={node.application} size={16} /> : null}
+          <p className="pr-body min-w-0 flex-1 truncate text-[13.5px] text-[var(--pr-ink)]">
+            {node.label}
+          </p>
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -385,29 +431,28 @@ export function LiveWorkflowPanel({
     diagram.confirmation === "pending" && Boolean(diagram.confirmPrompt);
 
   return (
-    <div className="pr-stage w-full max-w-4xl space-y-5">
-      <WorkflowDiagram
-        key={diagram.revision}
-        diagram={{ nodes: diagram.nodes, edges: diagram.edges }}
-        variant="wonderful"
-        emptyMessage="Drawing your workflow…"
-        animate
-        compact
-      />
+    <div className="w-full max-w-md space-y-4">
+      <p className="pr-label text-center">
+        {diagram.title || "Workflow"}
+      </p>
+
+      <div className="overflow-hidden rounded-[1.25rem] border border-[var(--pr-line)] bg-[#fafaf8]">
+        <SimpleWorkflowFlow nodes={diagram.nodes} />
+      </div>
 
       {awaiting ? (
         <div className="flex items-center justify-center gap-2">
           <button
             type="button"
             onClick={onNeedsFix}
-            className="pr-body rounded-full px-3.5 py-2 text-[13px] text-[var(--pr-muted)] transition-colors hover:bg-black/[0.04] hover:text-[var(--pr-ink)]"
+            className="pr-body cursor-pointer rounded-full px-3.5 py-2 text-[13px] text-[var(--pr-muted)] transition-colors hover:bg-black/[0.04] hover:text-[var(--pr-ink)]"
           >
-            Needs a fix
+            Fix
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className="pr-pill !bg-[var(--pr-dark)] !text-[var(--pr-cream)] hover:!bg-[#1d1d20]"
+            className="pr-pill cursor-pointer !bg-[var(--pr-dark)] !text-[var(--pr-cream)] hover:!bg-[var(--pr-dark-hover)]"
           >
             Looks right
           </button>
@@ -415,6 +460,12 @@ export function LiveWorkflowPanel({
       ) : null}
     </div>
   );
+}
+
+function shorten(text: string, max = 72) {
+  const cleaned = text.replace(/\s+/g, " ").trim();
+  if (cleaned.length <= max) return cleaned;
+  return `${cleaned.slice(0, max - 1).trim()}…`;
 }
 
 export function AutomationProposalCard({
@@ -426,56 +477,50 @@ export function AutomationProposalCard({
   onConfirm: () => void;
   onReject: () => void;
 }) {
-  const agentPreview = proposal.agentSteps.slice(0, 3);
-  const humanPreview = proposal.humanSteps.slice(0, 2);
+  const steps = proposal.agentSteps.slice(0, 4);
 
   return (
-    <div className="pr-stage w-full max-w-lg space-y-6 text-center">
-      <div className="space-y-3">
-        <p className="pr-label">Your agent</p>
-        <h3 className="pr-display text-[1.75rem] leading-[1.1] text-[var(--pr-ink)] md:text-[2rem]">
+    <div className="w-full max-w-sm space-y-4 text-center">
+      <div className="space-y-1.5">
+        <p className="pr-label">Automation</p>
+        <h3 className="pr-display text-[1.5rem] leading-[1.1] text-[var(--pr-ink)]">
           {proposal.name}
         </h3>
-        <p className="pr-body mx-auto max-w-md text-[15px] leading-7 text-[var(--pr-soft)]">
-          {proposal.outcome}
-        </p>
       </div>
 
-      <div className="space-y-3 text-left">
-        <PlanRow label="Starts when" value={proposal.trigger} />
-        {agentPreview.map((step, index) => (
-          <PlanRow
-            key={`agent-${index}`}
-            label={index === 0 ? "Then it" : undefined}
-            value={step}
-            tone="agent"
-          />
-        ))}
-        {humanPreview.map((step, index) => (
-          <PlanRow
-            key={`human-${index}`}
-            label={index === 0 ? "You still" : undefined}
-            value={step}
-            tone="human"
-          />
-        ))}
-      </div>
+      {steps.length ? (
+        <ol className="space-y-1.5 text-left">
+          {steps.map((step, index) => (
+            <li
+              key={`${step}-${index}`}
+              className="flex items-center gap-2.5 rounded-full border border-[var(--pr-line)] bg-white px-3 py-2"
+            >
+              <span className="pr-display flex size-5 shrink-0 items-center justify-center text-[12px] text-[var(--pr-ink)]/35">
+                {index + 1}
+              </span>
+              <span className="pr-body truncate text-[13px] text-[var(--pr-ink)]">
+                {shorten(step, 48)}
+              </span>
+            </li>
+          ))}
+        </ol>
+      ) : null}
 
       {proposal.status === "proposed" ? (
-        <div className="flex items-center justify-center gap-2 pt-1">
+        <div className="flex items-center justify-center gap-2">
           <button
             type="button"
             onClick={onReject}
-            className="pr-body rounded-full px-3.5 py-2 text-[13px] text-[var(--pr-muted)] transition-colors hover:bg-black/[0.04] hover:text-[var(--pr-ink)]"
+            className="pr-body cursor-pointer rounded-full px-3.5 py-2 text-[13px] text-[var(--pr-muted)] transition-colors hover:bg-black/[0.04] hover:text-[var(--pr-ink)]"
           >
-            Not this one
+            Not this
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className="pr-pill !bg-[var(--pr-dark)] !text-[var(--pr-cream)] hover:!bg-[#1d1d20]"
+            className="pr-pill cursor-pointer !bg-[var(--pr-dark)] !text-[var(--pr-cream)] hover:!bg-[var(--pr-dark-hover)]"
           >
-            Yes, prepare this
+            Build this
           </button>
         </div>
       ) : null}
@@ -486,163 +531,181 @@ export function AutomationProposalCard({
 export function IntegrationConnectPanel({
   integrations,
   onConnect,
+  connectingId,
 }: {
   integrations: IntegrationRequirement[];
   onConnect: (id: string) => void;
+  connectingId?: string | null;
 }) {
   if (integrations.length === 0) return null;
 
   return (
-    <div className="pr-stage w-full max-w-md space-y-6 text-center">
-      <div className="space-y-2">
-        <p className="pr-label">Connect apps</p>
-        <h3 className="pr-display text-[1.6rem] text-[var(--pr-ink)]">
-          A few apps to link
-        </h3>
-        <p className="pr-body text-[14px] leading-6 text-[var(--pr-muted)]">
-          Tap to connect. This is a preview for now.
-        </p>
-      </div>
+    <div className="w-full max-w-sm space-y-5 text-center">
+      <p className="pr-label">Connect</p>
 
-      <ul className="space-y-3 text-left">
-        {integrations.map((item) => (
-          <li
-            key={item.id}
-            className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--pr-line)] px-4 py-3"
-          >
-            <div className="flex min-w-0 items-center gap-3">
-              <AppLogo name={item.app} size={28} />
-              <div className="min-w-0">
-                <p className="pr-body text-[15px] text-[var(--pr-ink)]">
+      <ul className="space-y-2.5 text-left">
+        {integrations.map((item) => {
+          const busy = connectingId === item.id;
+          return (
+            <li
+              key={item.id}
+              className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--pr-line)] px-3.5 py-3"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <AppLogo name={item.app} size={28} />
+                <p className="pr-body truncate text-[14px] text-[var(--pr-ink)]">
                   {item.app}
                 </p>
-                {item.connected ? (
-                  <p className="pr-body text-[12px] text-emerald-700">Connected</p>
-                ) : item.required ? (
-                  <p className="pr-body text-[12px] text-[var(--pr-muted)]">
-                    Needed
-                  </p>
-                ) : null}
               </div>
-            </div>
-            <button
-              type="button"
-              disabled={item.connected}
-              onClick={() => onConnect(item.id)}
-              className={cn(
-                "pr-pill shrink-0 !px-3.5 !py-2 !text-[12.5px]",
-                item.connected
-                  ? "!bg-black/[0.04] !text-[var(--pr-muted)]"
-                  : "!bg-[var(--pr-dark)] !text-[var(--pr-cream)] hover:!bg-[#1d1d20]",
-              )}
-            >
-              {item.connected ? "Done" : "Connect"}
-            </button>
-          </li>
-        ))}
+              <button
+                type="button"
+                disabled={item.connected || busy}
+                onClick={() => onConnect(item.id)}
+                className={cn(
+                  "pr-pill shrink-0 cursor-pointer !px-3.5 !py-2 !text-[12.5px]",
+                  item.connected
+                    ? "!bg-emerald-50 !text-emerald-700"
+                    : "!bg-[var(--pr-dark)] !text-[var(--pr-cream)] hover:!bg-[var(--pr-dark-hover)]",
+                )}
+              >
+                {item.connected ? "Connected" : busy ? "…" : "Connect"}
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
 }
 
-export function AgentReadinessCard({ readiness }: { readiness: AgentReadiness }) {
-  const leftovers = readiness.remainingSetup.slice(0, 3);
+export function AgentReadinessCard({
+  readiness,
+  onCreate,
+  onCreateAndTest,
+  creating,
+}: {
+  readiness: AgentReadiness;
+  onCreate?: () => void;
+  onCreateAndTest?: () => void;
+  creating?: boolean;
+}) {
+  const leftovers = readiness.remainingSetup.slice(0, 2);
   const apps = readiness.requiredIntegrations.slice(0, 4);
+  const created = Boolean(readiness.automationId);
+  const test = readiness.testStatus ?? null;
+
+  // The card must never imply success before a run has actually been verified.
+  const state: { label: string; tone: "good" | "warn" | "danger" | "neutral" } =
+    test === "passed"
+      ? { label: "Works", tone: "good" }
+      : test === "running"
+        ? { label: "Testing", tone: "neutral" }
+        : test === "failed"
+          ? { label: "Test failed", tone: "danger" }
+          : test === "unverified"
+            ? { label: "Unverified", tone: "warn" }
+            : test === "awaiting_approval"
+              ? { label: "Needs approval", tone: "warn" }
+              : created
+                ? { label: "Created", tone: "neutral" }
+                : readiness.readyToCreate
+                  ? { label: "Ready to build", tone: "good" }
+                  : { label: "Almost", tone: "warn" };
 
   return (
-    <div className="pr-stage w-full max-w-xl space-y-6 text-center">
-      <div className="space-y-3">
-        <StatusChip
-          label={readiness.readyToCreate ? "Ready" : "Almost there"}
-          tone={readiness.readyToCreate ? "good" : "warn"}
-        />
-        <h3 className="pr-display text-[1.75rem] leading-[1.1] text-[var(--pr-ink)] md:text-[2.1rem]">
+    <div className="w-full max-w-sm space-y-4 text-center">
+      <div className="space-y-2.5">
+        <StatusPill label={state.label} tone={state.tone} />
+        <h3 className="pr-display text-[1.5rem] leading-[1.12] text-[var(--pr-ink)]">
           {readiness.agentName}
         </h3>
-        <p className="pr-body mx-auto max-w-md text-[15px] leading-7 text-[var(--pr-soft)]">
-          {readiness.outcome}
-        </p>
       </div>
-
-      {readiness.proposedAgentDiagram ? (
-        <WorkflowDiagram
-          agentDiagram={readiness.proposedAgentDiagram}
-          variant="wonderful"
-          animate
-          compact
-        />
-      ) : (
-        <div className="space-y-3 text-left">
-          <PlanRow label="Starts when" value={readiness.trigger} />
-        </div>
-      )}
 
       {apps.length ? (
         <div className="flex flex-wrap items-center justify-center gap-2">
           {apps.map((app) => (
             <span
               key={app}
-              className="pr-body inline-flex items-center gap-2 rounded-full border border-[var(--pr-line)] px-3 py-1.5 text-[12.5px] text-[var(--pr-soft)]"
+              className="inline-flex size-9 items-center justify-center rounded-full border border-[var(--pr-line)] bg-white"
+              title={app}
             >
-              <AppLogo name={app} size={14} />
-              {app}
+              <AppLogo name={app} size={16} />
             </span>
           ))}
         </div>
       ) : null}
 
-      {readiness.readyToCreate ? (
-        <p className="pr-body text-[13px] leading-6 text-[var(--pr-muted)]">
-          Ready to create. Nothing has been deployed yet.
-        </p>
-      ) : leftovers.length ? (
-        <div className="mx-auto max-w-sm space-y-2 text-left">
-          <p className="pr-label text-center">Still needed</p>
-          {leftovers.map((item) => (
-            <div
-              key={item}
-              className="pr-body flex gap-2 text-[13.5px] leading-6 text-[var(--pr-soft)]"
-            >
-              <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-[rgba(23,23,25,0.35)]" />
-              <span>{item}</span>
+      {test ? (
+        <div className="space-y-2">
+          {test === "running" ? (
+            <div className="flex items-center justify-center gap-2 text-[12.5px] text-[var(--pr-muted)]">
+              <span className="size-1.5 animate-pulse rounded-full bg-[var(--pr-ink)]/40" />
+              Running a real test
             </div>
+          ) : readiness.testSummary ? (
+            <p
+              className={cn(
+                "mx-auto max-w-[17rem] text-[12.5px] leading-5",
+                test === "failed"
+                  ? "text-[var(--pr-danger)]"
+                  : test === "passed"
+                    ? "text-[var(--pr-soft)]"
+                    : "text-[var(--pr-warn)]",
+              )}
+            >
+              {readiness.testSummary}
+            </p>
+          ) : null}
+          {created && test !== "running" ? (
+            <Link
+              href={`/automations/${readiness.automationId}`}
+              className="inline-block text-[12px] text-[var(--pr-muted)] underline-offset-2 hover:text-[var(--pr-ink)] hover:underline"
+            >
+              Open in Automations
+            </Link>
+          ) : null}
+        </div>
+      ) : created ? (
+        <Link
+          href={`/automations/${readiness.automationId}`}
+          className="inline-block text-[12px] text-[var(--pr-muted)] underline-offset-2 hover:text-[var(--pr-ink)] hover:underline"
+        >
+          Open in Automations
+        </Link>
+      ) : readiness.readyToCreate && onCreate ? (
+        <div className="flex flex-col items-center gap-2">
+          <button
+            type="button"
+            disabled={creating}
+            onClick={onCreateAndTest ?? onCreate}
+            className="pr-pill !bg-[var(--pr-dark)] !px-6 !py-3 !text-[13px] !text-[var(--pr-cream)] hover:!bg-[var(--pr-dark-hover)] disabled:opacity-60"
+          >
+            {creating ? "Building" : "Build and test"}
+          </button>
+          {onCreateAndTest ? (
+            <button
+              type="button"
+              disabled={creating}
+              onClick={onCreate}
+              className="text-[12px] text-[var(--pr-muted)] hover:text-[var(--pr-ink)]"
+            >
+              Build without testing
+            </button>
+          ) : null}
+        </div>
+      ) : leftovers.length ? (
+        <div className="flex flex-wrap justify-center gap-1.5">
+          {leftovers.map((item) => (
+            <span
+              key={item}
+              className="max-w-[14rem] truncate rounded-full border border-[var(--pr-line)] px-2.5 py-1 text-[11.5px] text-[var(--pr-soft)]"
+              title={item}
+            >
+              {shorten(item, 28)}
+            </span>
           ))}
         </div>
-      ) : (
-        <p className="pr-body text-[13px] leading-6 text-[var(--pr-muted)]">
-          {readiness.statusNote}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function PlanRow({
-  label,
-  value,
-  tone = "default",
-}: {
-  label?: string;
-  value: string;
-  tone?: "default" | "agent" | "human";
-}) {
-  return (
-    <div className="flex gap-3 rounded-2xl border border-[var(--pr-line)] px-4 py-3">
-      <span
-        aria-hidden
-        className={cn(
-          "mt-1.5 size-2 shrink-0 rounded-full",
-          tone === "agent" && "bg-[#111113]",
-          tone === "human" && "bg-sky-400",
-          tone === "default" && "bg-black/25",
-        )}
-      />
-      <div className="min-w-0 space-y-0.5">
-        {label ? <p className="pr-label !text-[10px]">{label}</p> : null}
-        <p className="pr-body text-[14px] leading-6 text-[var(--pr-ink)]">
-          {value}
-        </p>
-      </div>
+      ) : null}
     </div>
   );
 }
@@ -671,24 +734,24 @@ export function TranscriptPanel({
   return (
     <aside
       className={cn(
-        "fixed top-0 right-0 z-20 flex h-dvh flex-col border-l border-[var(--pr-line)] bg-white transition-[width,transform] duration-300 ease-out",
-        open ? "w-[min(22rem,92vw)]" : "w-12",
+        "fixed top-0 right-0 z-20 flex h-dvh flex-col border-l border-[var(--pr-line)] bg-white/95 backdrop-blur-sm transition-[width] duration-300 ease-out",
+        open ? "w-[min(18rem,88vw)]" : "w-11",
       )}
       aria-label="Call transcript"
     >
       <div
         className={cn(
-          "flex items-center border-b border-[var(--pr-line)] px-3 py-4",
-          open ? "justify-between" : "justify-center",
+          "flex items-center border-b border-[var(--pr-line)] px-2.5 py-3",
+          open ? "justify-between px-3" : "justify-center",
         )}
       >
-        {open ? <p className="pr-label">Transcript</p> : null}
+        {open ? <p className="pr-label !text-[10px]">Talk</p> : null}
         <button
           type="button"
           onClick={onToggle}
           aria-expanded={open}
           aria-label={open ? "Hide transcript" : "Show transcript"}
-          className="flex size-8 items-center justify-center rounded-full text-[var(--pr-muted)] transition-colors hover:bg-black/[0.04] hover:text-[var(--pr-ink)]"
+          className="flex size-8 cursor-pointer items-center justify-center rounded-full text-[var(--pr-muted)] transition-colors hover:bg-black/[0.04] hover:text-[var(--pr-ink)]"
         >
           {open ? (
             <CaretRight size={16} weight="bold" />
@@ -699,19 +762,17 @@ export function TranscriptPanel({
       </div>
 
       {open ? (
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
           {spoken.length === 0 ? (
-            <p className="pr-body text-[13px] leading-6 text-[var(--pr-muted)]">
-              The transcript will fill in as you talk.
-            </p>
+            <p className="pr-body text-[12px] text-[var(--pr-muted)]">Empty</p>
           ) : (
-            <div className="space-y-5">
+            <div className="space-y-3">
               {spoken.map((line) => (
-                <div key={line.id} className="space-y-1">
-                  <p className="pr-label !text-[10px]">
+                <div key={line.id} className="space-y-0.5">
+                  <p className="pr-label !text-[9px] !tracking-[0.14em]">
                     {line.role === "user" ? "You" : "Pacific"}
                   </p>
-                  <p className="pr-body text-[13px] leading-6 text-[var(--pr-soft)]">
+                  <p className="line-clamp-4 text-[12.5px] leading-5 text-[var(--pr-soft)]">
                     {line.text}
                   </p>
                 </div>
@@ -720,37 +781,9 @@ export function TranscriptPanel({
             </div>
           )}
         </div>
-      ) : (
-        <button
-          type="button"
-          onClick={onToggle}
-          className="pr-body flex flex-1 items-center justify-center px-2 text-[11px] tracking-[0.14em] text-[var(--pr-muted)] uppercase [writing-mode:vertical-rl]"
-        >
-          Transcript
-        </button>
-      )}
+      ) : null}
     </aside>
   );
 }
 
-function StatusChip({
-  label,
-  tone,
-}: {
-  label: string;
-  tone: "good" | "warn" | "neutral";
-}) {
-  return (
-    <span
-      className={cn(
-        "pr-body inline-flex rounded-full px-2.5 py-1 text-[11px] tracking-[0.04em] uppercase",
-        tone === "good" && "bg-emerald-500/10 text-emerald-800",
-        tone === "warn" && "bg-amber-500/10 text-amber-800",
-        tone === "neutral" && "bg-black/[0.04] text-[var(--pr-muted)]",
-      )}
-    >
-      {label}
-    </span>
-  );
-}
 

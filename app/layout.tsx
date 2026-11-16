@@ -37,7 +37,10 @@ export default function RootLayout({
         geistMono.variable,
       )}
     >
-      <body className="flex min-h-full flex-col bg-white text-[#171719]">
+      <body
+        className="flex min-h-full flex-col bg-white text-[#171719]"
+        suppressHydrationWarning
+      >
         <ClerkProvider>
           <ConvexClientProvider>
             <StoreUser />

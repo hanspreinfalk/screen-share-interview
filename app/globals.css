@@ -146,9 +146,18 @@
   --pr-muted: #6e6e6e;
   --pr-soft: #393939;
   --pr-dark: #111113;
+  --pr-dark-hover: #1d1d20;
   --pr-cream: #fafafa;
   --pr-line: rgba(23, 23, 25, 0.08);
   --pr-line-soft: rgba(23, 23, 25, 0.055);
+  /* Semantic state colors, so no screen hardcodes its own hex */
+  --pr-danger: #b4472f;
+  --pr-danger-line: #f0d2cb;
+  --pr-danger-bg: #fdf6f4;
+  --pr-warn: #a8641a;
+  --pr-warn-bg: rgba(245, 158, 11, 0.1);
+  --pr-good: #1f7a53;
+  --pr-good-bg: rgba(16, 185, 129, 0.1);
   background: var(--pr-bg);
   color: var(--pr-ink);
   font-family: var(--font-baskerville), "Libre Baskerville", Baskerville,

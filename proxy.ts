@@ -1,5 +1,10 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
 
+/**
+ * Clerk only attaches the auth context here. Authorization itself lives with
+ * the resource it protects: `app/(app)/layout.tsx` for the workspace, and
+ * every Convex function derives identity server-side.
+ */
 export default clerkMiddleware();
 
 export const config = {

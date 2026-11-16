@@ -1,9 +1,14 @@
+import type { UserIdentity } from "convex/server";
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import type { MutationCtx, QueryCtx } from "./_generated/server";
+import {
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
 
-async function userByTokenIdentifier(
+export async function userByTokenIdentifier(
   ctx: QueryCtx | MutationCtx,
   tokenIdentifier: string,
 ): Promise<Doc<"users"> | null> {
@@ -15,6 +20,46 @@ async function userByTokenIdentifier(
     .unique();
 }
 
+export async function userByClerkId(
+  ctx: QueryCtx | MutationCtx,
+  clerkId: string,
+): Promise<Doc<"users"> | null> {
+  return await ctx.db
+    .query("users")
+    .withIndex("by_clerkId", (q) => q.eq("clerkId", clerkId))
+    .unique();
+}
+
+export async function upsertUserFromIdentity(
+  ctx: MutationCtx,
+  identity: UserIdentity,
+): Promise<Doc<"users">> {
+  const fields = {
+    tokenIdentifier: identity.tokenIdentifier,
+    clerkId: identity.subject,
+    email: identity.email,
+    name: identity.name,
+    imageUrl: identity.pictureUrl,
+  };
+
+  const existing = await userByTokenIdentifier(ctx, identity.tokenIdentifier);
+  if (existing) {
+    await ctx.db.patch(existing._id, fields);
+    const updated = await ctx.db.get(existing._id);
+    if (!updated) {
+      throw new Error("Failed to reload user after patch");
+    }
+    return updated;
+  }
+
+  const id = await ctx.db.insert("users", fields);
+  const created = await ctx.db.get(id);
+  if (!created) {
+    throw new Error("Failed to load user after insert");
+  }
+  return created;
+}
+
 /** Upsert the signed-in Clerk user into the `users` table. */
 export const store = mutation({
   args: {},
@@ -24,22 +69,8 @@ export const store = mutation({
     if (!identity) {
       throw new Error("Not authenticated");
     }
-
-    const existing = await userByTokenIdentifier(ctx, identity.tokenIdentifier);
-    const fields = {
-      tokenIdentifier: identity.tokenIdentifier,
-      clerkId: identity.subject,
-      email: identity.email,
-      name: identity.name,
-      imageUrl: identity.pictureUrl,
-    };
-
-    if (existing) {
-      await ctx.db.patch(existing._id, fields);
-      return existing._id;
-    }
-
-    return await ctx.db.insert("users", fields);
+    const user = await upsertUserFromIdentity(ctx, identity);
+    return user._id;
   },
 });
 

@@ -1,3 +1,4 @@
+import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
 import {
@@ -5,27 +6,36 @@ import {
   REALTIME_TOOLS,
 } from "@/lib/consultant-prompt";
 
-const SESSION_CONFIG = {
-  session: {
-    type: "realtime" as const,
-    model: "gpt-realtime-2.1",
-    instructions: CONSULTANT_INSTRUCTIONS,
-    tools: REALTIME_TOOLS,
-    tool_choice: "auto" as const,
-    audio: {
-      input: {
-        transcription: {
-          model: "gpt-4o-mini-transcribe",
+function sessionConfig() {
+  return {
+    session: {
+      type: "realtime" as const,
+      model: "gpt-realtime-2.1",
+      instructions: CONSULTANT_INSTRUCTIONS,
+      tools: REALTIME_TOOLS,
+      tool_choice: "auto" as const,
+      audio: {
+        input: {
+          transcription: {
+            model: "gpt-4o-mini-transcribe",
+          },
+        },
+        output: {
+          voice: "marin",
         },
       },
-      output: {
-        voice: "marin",
-      },
     },
-  },
-};
+  };
+}
 
 export async function POST() {
+  // This route mints a credential against our OpenAI account, so it must
+  // never be callable anonymously.
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+  }
+
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
@@ -42,9 +52,10 @@ export async function POST() {
         headers: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
-          "OpenAI-Safety-Identifier": "interview-test-workflow-consultant",
+          // Per-user identifier so abuse is attributable.
+          "OpenAI-Safety-Identifier": userId,
         },
-        body: JSON.stringify(SESSION_CONFIG),
+        body: JSON.stringify(sessionConfig()),
       },
     );
 

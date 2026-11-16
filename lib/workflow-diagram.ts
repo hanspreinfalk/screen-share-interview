@@ -198,8 +198,13 @@ export function preferDiagram(
   primary?: { nodes: WorkflowDiagramNode[]; edges: WorkflowDiagramEdge[] },
   fallbackWorkflow?: WorkflowModel | null,
 ) {
-  if (primary?.nodes?.length && primary.edges?.length) {
-    return primary;
+  // Nodes alone are enough to draw. Requiring edges hid live diagrams whenever
+  // the model omitted edges or sent ones we could not parse.
+  if (primary?.nodes?.length) {
+    return {
+      nodes: primary.nodes,
+      edges: primary.edges ?? [],
+    };
   }
   if (fallbackWorkflow) {
     return buildDiagramFromWorkflow(fallbackWorkflow);

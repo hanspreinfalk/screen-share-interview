@@ -1,9 +1,5 @@
-import { WorkflowConsultant } from "@/components/workflow-consultant";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return (
-    <main className="flex flex-1 flex-col">
-      <WorkflowConsultant />
-    </main>
-  );
+  redirect("/interview");
 }

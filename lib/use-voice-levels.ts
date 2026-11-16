@@ -29,8 +29,13 @@ export function useVoiceLevels({
 
   useEffect(() => {
     if (!enabled || (!micStream && !remoteStream)) {
-      setLevels(createEmptyLevels());
-      return;
+      // Reset on the next frame rather than synchronously in the effect body,
+      // so flattening the wave cannot cascade a render.
+      const reset = requestAnimationFrame(() => {
+        smoothedRef.current = createEmptyLevels();
+        setLevels(createEmptyLevels());
+      });
+      return () => cancelAnimationFrame(reset);
     }
 
     const AudioCtx =

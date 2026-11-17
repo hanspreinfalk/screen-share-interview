@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { FriendCall } from "@/components/friend-call";
 
 export default function Home() {
-  redirect("/interview");
+  return <FriendCall />;
 }

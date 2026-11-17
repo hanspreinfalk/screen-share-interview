@@ -7,7 +7,7 @@ export default function SignInPage() {
   return (
     <AuthShell
       heading="Welcome back"
-      subheading="Sign in to continue with Pacific."
+      subheading="Sign in to talk with Pacific."
       altHref="/sign-up"
       altLabel="Create account"
     >
@@ -18,7 +18,7 @@ export default function SignInPage() {
           appearance={{
             elements: {
               rootBox: "mx-auto",
-              card: "shadow-none border border-[var(--pr-line)]",
+              card: "shadow-none border border-black/8 bg-white/70",
             },
           }}
         />

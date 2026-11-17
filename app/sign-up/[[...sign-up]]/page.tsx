@@ -6,8 +6,8 @@ import { AuthShell } from "@/components/auth-shell";
 export default function SignUpPage() {
   return (
     <AuthShell
-      heading="Create your account"
-      subheading="Five minutes on a call, one working automation."
+      heading="Join Pacific"
+      subheading="A friend to talk things through with."
       altHref="/sign-in"
       altLabel="Sign in"
     >
@@ -18,7 +18,7 @@ export default function SignUpPage() {
           appearance={{
             elements: {
               rootBox: "mx-auto",
-              card: "shadow-none border border-[var(--pr-line)]",
+              card: "shadow-none border border-black/8 bg-white/70",
             },
           }}
         />

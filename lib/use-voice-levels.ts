@@ -44,10 +44,10 @@ export function useVoiceLevels({
         .webkitAudioContext;
     const ctx = new AudioCtx();
 
-    const micAnalyser = micStream ? attachAnalyser(ctx, micStream) : null;
-    const remoteAnalyser = remoteStream
-      ? attachAnalyser(ctx, remoteStream)
-      : null;
+    const micTap = micStream ? attachAnalyser(ctx, micStream) : null;
+    const remoteTap = remoteStream ? attachAnalyser(ctx, remoteStream) : null;
+    const micAnalyser = micTap?.analyser ?? null;
+    const remoteAnalyser = remoteTap?.analyser ?? null;
 
     const micData = micAnalyser
       ? (new Uint8Array(micAnalyser.frequencyBinCount) as Uint8Array<ArrayBuffer>)
@@ -105,6 +105,8 @@ export function useVoiceLevels({
     return () => {
       alive = false;
       cancelAnimationFrame(frame);
+      micTap?.clone.getTracks().forEach((track) => track.stop());
+      remoteTap?.clone.getTracks().forEach((track) => track.stop());
       void ctx.close().catch(() => undefined);
     };
   }, [enabled, micStream, remoteStream, muted]);
@@ -113,7 +115,10 @@ export function useVoiceLevels({
 }
 
 function attachAnalyser(ctx: AudioContext, stream: MediaStream) {
-  const source = ctx.createMediaStreamSource(stream);
+  // Clone so Web Audio never taps the live mic/remote tracks used by WebRTC /
+  // <audio>. Sharing those tracks with an AudioContext weakens echo cancellation.
+  const clone = stream.clone();
+  const source = ctx.createMediaStreamSource(clone);
   const analyser = ctx.createAnalyser();
   analyser.fftSize = 128;
   analyser.smoothingTimeConstant = 0.55;
@@ -121,7 +126,7 @@ function attachAnalyser(ctx: AudioContext, stream: MediaStream) {
   analyser.maxDecibels = -20;
   source.connect(analyser);
   // Do not connect to destination: mic would echo, remote already plays via <audio>.
-  return analyser;
+  return { analyser, clone };
 }
 
 function sampleBars(analyser: AnalyserNode, data: Uint8Array<ArrayBuffer>) {

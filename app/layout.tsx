@@ -1,6 +1,6 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
-import { Geist_Mono, Libre_Baskerville } from "next/font/google";
+import { Libre_Baskerville } from "next/font/google";
 import { ConvexClientProvider } from "@/components/convex-client-provider";
 import { StoreUser } from "@/components/store-user";
 import { cn } from "@/lib/utils";
@@ -12,15 +12,9 @@ const baskerville = Libre_Baskerville({
   variable: "--font-baskerville",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
-  title: "Pacific, Workflow Consultant",
-  description:
-    "Live AI systems architect that watches your workflow and designs autonomous agents",
+  title: "Pacific",
+  description: "A friend to talk things through with.",
 };
 
 export default function RootLayout({
@@ -31,14 +25,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={cn(
-        "h-full antialiased",
-        baskerville.variable,
-        geistMono.variable,
-      )}
+      className={cn("h-full antialiased", baskerville.variable)}
     >
       <body
-        className="flex min-h-full flex-col bg-white text-[#171719]"
+        className="flex min-h-full flex-col bg-white text-black"
         suppressHydrationWarning
       >
         <ClerkProvider>

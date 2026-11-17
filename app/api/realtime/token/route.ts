@@ -1,39 +1,42 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-import {
-  CONSULTANT_INSTRUCTIONS,
-  REALTIME_TOOLS,
-} from "@/lib/consultant-prompt";
+import { buildFriendInstructions } from "@/lib/friend-prompt";
 
-function sessionConfig() {
-  return {
-    session: {
-      type: "realtime" as const,
-      model: "gpt-realtime-2.1",
-      instructions: CONSULTANT_INSTRUCTIONS,
-      tools: REALTIME_TOOLS,
-      tool_choice: "auto" as const,
-      audio: {
-        input: {
-          transcription: {
-            model: "gpt-4o-mini-transcribe",
-          },
-        },
-        output: {
-          voice: "marin",
-        },
-      },
-    },
-  };
-}
+/**
+ * gpt-realtime-1.5 is the fast NON-reasoning speech-to-speech model.
+ * gpt-realtime-2 is a reasoning model: it thinks before it speaks and emits
+ * spoken "preambles" by default, which adds latency and makes casual chat feel
+ * stilted. A friend call needs no reasoning or tools, so 1.5 is the right pick.
+ * https://developers.openai.com/api/docs/guides/voice-prompting
+ */
+const REALTIME_MODEL = "gpt-realtime-1.5";
+const DEFAULT_VOICE = "marin";
 
-export async function POST() {
-  // This route mints a credential against our OpenAI account, so it must
-  // never be callable anonymously.
+/**
+ * Mint a short-lived OpenAI Realtime client secret for the browser.
+ * Session is locked to the realtime model and the Pacific friend prompt.
+ */
+export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+  }
+
+  // Per-call context (name, local time) so the opener varies and feels known.
+  // Body is optional; a malformed one must not break the call.
+  let context: { firstName?: string | null; localTime?: string | null } = {};
+  try {
+    const body = await request.json();
+    if (body && typeof body === "object") {
+      const { firstName, localTime } = body as Record<string, unknown>;
+      context = {
+        firstName: typeof firstName === "string" ? firstName.slice(0, 64) : null,
+        localTime: typeof localTime === "string" ? localTime.slice(0, 64) : null,
+      };
+    }
+  } catch {
+    /* no body sent; fall back to the base prompt */
   }
 
   const apiKey = process.env.OPENAI_API_KEY;
@@ -44,6 +47,8 @@ export async function POST() {
     );
   }
 
+  const voice = process.env.OPENAI_REALTIME_VOICE || DEFAULT_VOICE;
+
   try {
     const response = await fetch(
       "https://api.openai.com/v1/realtime/client_secrets",
@@ -52,28 +57,62 @@ export async function POST() {
         headers: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
-          // Per-user identifier so abuse is attributable.
-          "OpenAI-Safety-Identifier": userId,
         },
-        body: JSON.stringify(sessionConfig()),
+        body: JSON.stringify({
+          session: {
+            type: "realtime",
+            model: REALTIME_MODEL,
+            instructions: buildFriendInstructions(context),
+            output_modalities: ["audio"],
+            audio: {
+              input: {
+                // WebRTC negotiates Opus media tracks; no PCM format here.
+                // Filters the mic before VAD, which cuts false turn triggers
+                // from background noise (a big source of weird interruptions).
+                noise_reduction: { type: "near_field" },
+                transcription: { model: "gpt-4o-mini-transcribe" },
+                turn_detection: {
+                  // semantic_vad reads meaning to tell when a thought is
+                  // actually finished, instead of just timing silence.
+                  type: "semantic_vad",
+                  // high = reply sooner (max ~2s wait vs ~4s on medium)
+                  eagerness: "high",
+                  create_response: true,
+                  interrupt_response: true,
+                },
+              },
+              output: {
+                voice,
+                // Natural playback rate. Delivery/pacing is steered in the prompt.
+                speed: 1,
+              },
+            },
+          },
+          expires_after: { anchor: "created_at", seconds: 600 },
+        }),
       },
     );
 
-    const data = await response.json();
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: data?.error?.message ?? "Failed to create client secret" },
-        { status: response.status },
-      );
+    const data = (await response.json()) as {
+      value?: string;
+      error?: { message?: string };
+      message?: string;
+    };
+
+    if (!response.ok || !data.value) {
+      const detail =
+        data.error?.message ?? data.message ?? "Failed to create Realtime client secret";
+      return NextResponse.json({ error: detail }, { status: response.status });
     }
 
-    return NextResponse.json(data, {
-      headers: { "Cache-Control": "no-store" },
-    });
-  } catch (error) {
-    console.error("Realtime token error:", error);
     return NextResponse.json(
-      { error: "Failed to create client secret" },
+      { value: data.value },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  } catch (error) {
+    console.error("OpenAI Realtime token error:", error);
+    return NextResponse.json(
+      { error: "Failed to create Realtime client secret" },
       { status: 500 },
     );
   }

@@ -8,7 +8,9 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-baskerville), "Libre Baskerville", Baskerville, "Times New Roman", serif;
-  --font-mono: var(--font-geist-mono);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-geist-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
   --font-heading: var(--font-baskerville), "Libre Baskerville", Baskerville, "Times New Roman", serif;
   --font-display: var(--font-baskerville), "Libre Baskerville", Baskerville, "Times New Roman", serif;
   --color-sidebar-ring: var(--sidebar-ring);
@@ -495,5 +497,92 @@
   .pacific-surface * {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
+  }
+}
+
+/* ── Friend call (Sesame-matched) ─────────────────────────────────────── */
+
+.friend-surface {
+  --friend-orb: #2a2420;
+  background: #ffffff;
+  color: #000000;
+  font-family: var(--font-baskerville), "Libre Baskerville", Baskerville,
+    "Times New Roman", serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.friend-brand,
+.friend-name {
+  font-family: var(--font-baskerville), "Libre Baskerville", Baskerville,
+    "Times New Roman", serif;
+  font-weight: 400;
+}
+
+.friend-name {
+  letter-spacing: -0.02em;
+}
+
+.friend-sans {
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-weight: 400;
+}
+
+.friend-orb {
+  background: var(--friend-orb);
+  transition: transform 180ms ease-out;
+  will-change: transform;
+}
+
+.friend-orb-idle {
+  animation: friend-orb-breathe 5s ease-in-out infinite;
+}
+
+.friend-orb-speaking {
+  animation: friend-orb-speak 1.2s ease-in-out infinite;
+}
+
+.friend-orb-thinking {
+  animation: friend-orb-breathe 2.4s ease-in-out infinite;
+  opacity: 0.92;
+}
+
+.friend-callbar {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.friend-picker {
+  box-shadow: 0 18px 40px -28px rgba(0, 0, 0, 0.45);
+}
+
+.friend-feedback {
+  box-shadow: none;
+}
+
+@keyframes friend-orb-breathe {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.06);
+  }
+}
+
+@keyframes friend-orb-speak {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .friend-orb-idle,
+  .friend-orb-speaking,
+  .friend-orb-thinking {
+    animation: none;
   }
 }

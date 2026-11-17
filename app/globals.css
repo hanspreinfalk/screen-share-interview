@@ -509,6 +509,16 @@
   font-family: var(--font-baskerville), "Libre Baskerville", Baskerville,
     "Times New Roman", serif;
   -webkit-font-smoothing: antialiased;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Phone landscape: keep call chrome from colliding in short viewports. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .friend-surface {
+    font-size: 15px;
+  }
 }
 
 .friend-brand,

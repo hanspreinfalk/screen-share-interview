@@ -1,5 +1,5 @@
 import { ClerkProvider } from "@clerk/nextjs";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Libre_Baskerville } from "next/font/google";
 import { ConvexClientProvider } from "@/components/convex-client-provider";
 import { StoreUser } from "@/components/store-user";
@@ -17,6 +17,12 @@ export const metadata: Metadata = {
   description: "A friend to talk things through with.",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -28,7 +34,7 @@ export default function RootLayout({
       className={cn("h-full antialiased", baskerville.variable)}
     >
       <body
-        className="flex min-h-full flex-col bg-white text-black"
+        className="flex min-h-full flex-col overflow-x-hidden bg-white text-black"
         suppressHydrationWarning
       >
         <ClerkProvider>

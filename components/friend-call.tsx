@@ -144,15 +144,15 @@ export function FriendCall() {
   }, [firstName, greeting]);
 
   return (
-    <div className="friend-surface flex min-h-dvh flex-col">
-      <header className="flex items-center justify-between px-5 pt-4 pb-3 md:px-6">
-        <p className="friend-brand text-[17px] font-bold tracking-[0.08em] text-black uppercase md:text-[18px]">
+    <div className="friend-surface flex h-dvh max-h-dvh min-h-0 flex-col overflow-hidden">
+      <header className="flex shrink-0 items-center justify-between px-5 pt-4 pb-3 max-md:landscape:px-4 max-md:landscape:pt-2 max-md:landscape:pb-1 md:px-6">
+        <p className="friend-brand text-[17px] font-bold tracking-[0.08em] text-black uppercase max-md:landscape:text-[14px] md:text-[18px]">
           Pacific Machines
         </p>
         <AccountLink />
       </header>
 
-      <main className="relative flex flex-1 flex-col items-center px-6">
+      <main className="relative flex min-h-0 flex-1 flex-col items-center overflow-y-auto overscroll-contain px-6 max-md:landscape:px-4">
         {phase === "idle" ? (
           <IdleLobby
             greeting={greetingLine}
@@ -165,12 +165,12 @@ export function FriendCall() {
 
         {phase === "live" ? (
           <>
-            <div className="pointer-events-none absolute inset-x-0 top-[min(18vh,8.5rem)] z-10 flex flex-col items-center">
-              <h1 className="friend-name text-[1.65rem] leading-none text-black md:text-[1.85rem]">
+            <div className="pointer-events-none absolute inset-x-0 top-[min(18vh,8.5rem)] z-10 flex flex-col items-center max-md:landscape:top-2">
+              <h1 className="friend-name text-[1.65rem] leading-none text-black max-md:landscape:text-[1.25rem] md:text-[1.85rem]">
                 Pacific
               </h1>
               <p
-                className="friend-sans mt-3 text-[13px] tracking-[0.02em] text-black/40 tabular-nums"
+                className="friend-sans mt-3 text-[13px] tracking-[0.02em] text-black/40 tabular-nums max-md:landscape:mt-1 max-md:landscape:text-[12px]"
                 aria-live="off"
                 role="timer"
               >
@@ -178,7 +178,7 @@ export function FriendCall() {
               </p>
             </div>
 
-            <div className="absolute inset-0 flex items-center justify-center pb-8">
+            <div className="absolute inset-0 flex items-center justify-center pb-8 max-md:landscape:pb-0 max-md:landscape:pt-6">
               <Presence
                 live
                 speaking={speaking}
@@ -191,13 +191,13 @@ export function FriendCall() {
             {error ? (
               <p
                 role="alert"
-                className="friend-sans absolute inset-x-0 bottom-44 z-10 mx-auto max-w-xs text-center text-[13px] leading-5 text-[#9a4a3a] md:bottom-48"
+                className="friend-sans absolute inset-x-0 bottom-44 z-10 mx-auto max-w-xs text-center text-[13px] leading-5 text-[#9a4a3a] max-md:landscape:bottom-16 md:bottom-48"
               >
                 {error}
               </p>
             ) : null}
 
-            <div className="absolute inset-x-0 bottom-28 z-10 flex flex-col items-center gap-3 md:bottom-32">
+            <div className="absolute inset-x-0 bottom-28 z-10 flex flex-col items-center gap-3 max-md:landscape:bottom-3 md:bottom-32">
               <CallBar
                 muted={micMuted}
                 onToggleMute={() => {
@@ -237,24 +237,24 @@ function IdleLobby({
   onStart: () => void;
 }) {
   return (
-    <div className="flex w-full flex-1 flex-col items-center justify-center px-4 pb-10 pt-4">
-      <h1 className="friend-name mb-8 text-center text-[1.55rem] leading-none text-black md:mb-10 md:text-[1.75rem]">
+    <div className="flex w-full min-h-0 flex-1 flex-col items-center justify-center px-4 pb-10 pt-4 max-md:landscape:justify-start max-md:landscape:gap-3 max-md:landscape:px-2 max-md:landscape:pb-3 max-md:landscape:pt-1">
+      <h1 className="friend-name mb-8 shrink-0 text-center text-[1.55rem] leading-none text-black max-md:landscape:mb-0 max-md:landscape:text-[1.2rem] md:mb-10 md:text-[1.75rem]">
         {greeting}
       </h1>
 
       {!isLoaded ? (
         <div
-          className="friend-picker h-[min(44vh,20rem)] w-[min(94vw,32rem)] animate-pulse rounded-[1.25rem] bg-black/[0.06]"
+          className="friend-picker h-[min(44vh,20rem)] w-[min(94vw,32rem)] shrink-0 animate-pulse rounded-[1.25rem] bg-black/[0.06] max-md:landscape:h-[min(52vh,9.5rem)] max-md:landscape:w-[min(72vw,28rem)]"
           aria-hidden
         />
       ) : isSignedIn ? (
         <button
           type="button"
           onClick={onStart}
-          className="friend-picker group flex h-[min(44vh,20rem)] w-[min(94vw,32rem)] items-center justify-center gap-3 rounded-[1.25rem] bg-[#1c1816] text-white transition hover:bg-[#25201d] active:scale-[0.992]"
+          className="friend-picker group flex h-[min(44vh,20rem)] w-[min(94vw,32rem)] shrink-0 items-center justify-center gap-3 rounded-[1.25rem] bg-[#1c1816] text-white transition hover:bg-[#25201d] active:scale-[0.992] max-md:landscape:h-[min(52vh,9.5rem)] max-md:landscape:w-[min(72vw,28rem)]"
         >
-          <Phone size={22} weight="fill" className="opacity-95" />
-          <span className="friend-name text-[1.45rem] leading-none tracking-[-0.02em] md:text-[1.55rem]">
+          <Phone size={22} weight="fill" className="opacity-95 max-md:landscape:size-5" />
+          <span className="friend-name text-[1.45rem] leading-none tracking-[-0.02em] max-md:landscape:text-[1.25rem] md:text-[1.55rem]">
             Pacific
           </span>
         </button>
@@ -262,17 +262,17 @@ function IdleLobby({
         <SignInButton mode="redirect" forceRedirectUrl="/">
           <button
             type="button"
-            className="friend-picker group flex h-[min(44vh,20rem)] w-[min(94vw,32rem)] items-center justify-center gap-3 rounded-[1.25rem] bg-[#1c1816] text-white transition hover:bg-[#25201d]"
+            className="friend-picker group flex h-[min(44vh,20rem)] w-[min(94vw,32rem)] shrink-0 items-center justify-center gap-3 rounded-[1.25rem] bg-[#1c1816] text-white transition hover:bg-[#25201d] max-md:landscape:h-[min(52vh,9.5rem)] max-md:landscape:w-[min(72vw,28rem)]"
           >
-            <Phone size={22} weight="fill" className="opacity-95" />
-            <span className="friend-name text-[1.45rem] leading-none tracking-[-0.02em] md:text-[1.55rem]">
+            <Phone size={22} weight="fill" className="opacity-95 max-md:landscape:size-5" />
+            <span className="friend-name text-[1.45rem] leading-none tracking-[-0.02em] max-md:landscape:text-[1.25rem] md:text-[1.55rem]">
               Pacific
             </span>
           </button>
         </SignInButton>
       )}
 
-      <p className="friend-sans mt-5 text-center text-[14px] leading-[1.5] text-black/55">
+      <p className="friend-sans mt-5 shrink-0 text-center text-[14px] leading-[1.5] text-black/55 max-md:landscape:mt-0 max-md:landscape:text-[12px] max-md:landscape:leading-[1.35]">
         By using our services, you agree to{" "}
         <span className="whitespace-nowrap">Pacific Machines&apos;</span>
         <br />
@@ -284,7 +284,7 @@ function IdleLobby({
       {error ? (
         <p
           role="alert"
-          className="friend-sans mt-6 max-w-xs text-center text-[13px] leading-5 text-[#9a4a3a]"
+          className="friend-sans mt-6 max-w-xs shrink-0 text-center text-[13px] leading-5 text-[#9a4a3a] max-md:landscape:mt-1"
         >
           {error}
         </p>
@@ -303,18 +303,18 @@ function EndedFeedback({
   onContinue: () => void;
 }) {
   return (
-    <div className="flex w-full flex-1 flex-col items-center pb-10 pt-4">
-      <div className="flex flex-1 flex-col items-center justify-center">
-        <h1 className="friend-name mb-8 text-center text-[1.45rem] leading-snug text-black md:mb-10 md:text-[1.65rem]">
+    <div className="flex w-full min-h-0 flex-1 flex-col items-center pb-10 pt-4 max-md:landscape:justify-start max-md:landscape:pb-3 max-md:landscape:pt-1">
+      <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center max-md:landscape:justify-start max-md:landscape:gap-3">
+        <h1 className="friend-name mb-8 shrink-0 text-center text-[1.45rem] leading-snug text-black max-md:landscape:mb-0 max-md:landscape:text-[1.15rem] md:mb-10 md:text-[1.65rem]">
           Thank you for talking to Pacific
         </h1>
 
-        <div className="friend-feedback flex h-[min(40vh,18.5rem)] w-[min(94vw,32rem)] flex-col items-center justify-center rounded-[1.25rem] bg-[#f2f2f2] px-6">
-          <p className="friend-name mb-7 text-center text-[1.05rem] leading-snug text-black md:text-[1.15rem]">
+        <div className="friend-feedback flex h-[min(40vh,18.5rem)] w-[min(94vw,32rem)] shrink-0 flex-col items-center justify-center rounded-[1.25rem] bg-[#f2f2f2] px-6 max-md:landscape:h-[min(48vh,8.5rem)] max-md:landscape:w-[min(72vw,28rem)] max-md:landscape:px-4">
+          <p className="friend-name mb-7 text-center text-[1.05rem] leading-snug text-black max-md:landscape:mb-3 max-md:landscape:text-[0.95rem] md:text-[1.15rem]">
             How was your conversation?
           </p>
           <div
-            className="flex items-end gap-3.5 md:gap-4"
+            className="flex items-end gap-3.5 max-md:landscape:gap-3 md:gap-4"
             role="radiogroup"
             aria-label="Conversation rating"
           >
@@ -327,14 +327,19 @@ function EndedFeedback({
                   role="radio"
                   aria-checked={rating === value}
                   onClick={() => onRate(value)}
-                  className="friend-sans flex flex-col items-center gap-2 text-black/45 transition hover:text-black/70"
+                  className="friend-sans flex flex-col items-center gap-2 text-black/45 transition hover:text-black/70 max-md:landscape:gap-1"
                 >
                   <Star
                     size={28}
                     weight={filled ? "fill" : "regular"}
-                    className={cn(filled ? "text-black/70" : "text-black/35")}
+                    className={cn(
+                      filled ? "text-black/70" : "text-black/35",
+                      "max-md:landscape:size-5",
+                    )}
                   />
-                  <span className="text-[12px] tabular-nums">{value}</span>
+                  <span className="text-[12px] tabular-nums max-md:landscape:text-[11px]">
+                    {value}
+                  </span>
                 </button>
               );
             })}
@@ -344,7 +349,7 @@ function EndedFeedback({
         <button
           type="button"
           onClick={onContinue}
-          className="friend-sans mt-8 rounded-full border border-black/12 bg-white px-7 py-3 text-[14px] text-black transition hover:bg-black/[0.03]"
+          className="friend-sans mt-8 shrink-0 rounded-full border border-black/12 bg-white px-7 py-3 text-[14px] text-black transition hover:bg-black/[0.03] max-md:landscape:mt-0 max-md:landscape:px-5 max-md:landscape:py-2 max-md:landscape:text-[13px]"
         >
           Continue to the next conversation
         </button>
@@ -391,17 +396,17 @@ function CallBar({
   onEnd: () => void;
 }) {
   return (
-    <div className="friend-callbar flex items-stretch overflow-hidden rounded-[1.65rem] border border-black/10 bg-white">
+    <div className="friend-callbar flex items-stretch overflow-hidden rounded-[1.65rem] border border-black/10 bg-white max-md:landscape:rounded-[1.25rem]">
       <button
         type="button"
         onClick={onToggleMute}
         aria-pressed={muted}
-        className="friend-sans flex min-w-[10rem] items-center justify-center gap-3 px-9 py-4.5 text-[16px] text-black transition hover:bg-black/[0.03]"
+        className="friend-sans flex min-w-[10rem] items-center justify-center gap-3 px-9 py-4.5 text-[16px] text-black transition hover:bg-black/[0.03] max-md:landscape:min-w-[7.5rem] max-md:landscape:gap-2 max-md:landscape:px-5 max-md:landscape:py-2.5 max-md:landscape:text-[14px]"
       >
         {muted ? (
-          <MicrophoneSlash size={22} weight="regular" />
+          <MicrophoneSlash size={22} weight="regular" className="max-md:landscape:size-[18px]" />
         ) : (
-          <Microphone size={22} weight="regular" />
+          <Microphone size={22} weight="regular" className="max-md:landscape:size-[18px]" />
         )}
         {muted ? "Unmute" : "Mute"}
       </button>
@@ -409,9 +414,9 @@ function CallBar({
       <button
         type="button"
         onClick={onEnd}
-        className="friend-sans flex min-w-[10rem] items-center justify-center gap-3 px-9 py-4.5 text-[16px] text-black transition hover:bg-black/[0.03]"
+        className="friend-sans flex min-w-[10rem] items-center justify-center gap-3 px-9 py-4.5 text-[16px] text-black transition hover:bg-black/[0.03] max-md:landscape:min-w-[7.5rem] max-md:landscape:gap-2 max-md:landscape:px-5 max-md:landscape:py-2.5 max-md:landscape:text-[14px]"
       >
-        <span className="size-[13px] rounded-[2.5px] bg-black" aria-hidden />
+        <span className="size-[13px] rounded-[2.5px] bg-black max-md:landscape:size-[11px]" aria-hidden />
         End call
       </button>
     </div>
@@ -443,7 +448,7 @@ function Presence({
   return (
     <div
       className={cn(
-        "friend-orb relative size-[min(40vw,12rem)] rounded-full md:size-[13rem]",
+        "friend-orb relative size-[min(40vw,12rem)] rounded-full max-md:landscape:size-[min(34vh,6.75rem)] md:size-[13rem]",
         speaking && "friend-orb-speaking",
         (thinking || connecting) && "friend-orb-thinking",
         !live && "friend-orb-idle",

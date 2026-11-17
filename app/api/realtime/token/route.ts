@@ -3,14 +3,7 @@ import { NextResponse } from "next/server";
 
 import { buildFriendInstructions } from "@/lib/friend-prompt";
 
-/**
- * gpt-realtime-1.5 is the fast NON-reasoning speech-to-speech model.
- * gpt-realtime-2 is a reasoning model: it thinks before it speaks and emits
- * spoken "preambles" by default, which adds latency and makes casual chat feel
- * stilted. A friend call needs no reasoning or tools, so 1.5 is the right pick.
- * https://developers.openai.com/api/docs/guides/voice-prompting
- */
-const REALTIME_MODEL = "gpt-realtime-1.5";
+const REALTIME_MODEL = "gpt-realtime-2";
 const DEFAULT_VOICE = "marin";
 
 /**
